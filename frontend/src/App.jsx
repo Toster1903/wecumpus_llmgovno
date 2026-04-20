@@ -5,10 +5,11 @@ import Login from './pages/Login';
 import ServiceHub from './pages/ServiceHub';
 import UserProfilePage from './pages/UserProfilePage';
 import api from './api/axios';
+import { clearAuthToken, getAuthToken, setAuthToken } from './utils/authToken';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(localStorage.getItem('token')));
-  const [isCheckingProfile, setIsCheckingProfile] = useState(Boolean(localStorage.getItem('token')));
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
+  const [isCheckingProfile, setIsCheckingProfile] = useState(Boolean(getAuthToken()));
   const [hasProfile, setHasProfile] = useState(false);
   const [currentPage, setCurrentPage] = useState('service');
   const [selectedUserProfileId, setSelectedUserProfileId] = useState(null);
@@ -30,7 +31,7 @@ function App() {
         if (error?.response?.status === 404) {
           setHasProfile(false);
         } else if (error?.response?.status === 401) {
-          localStorage.removeItem('token');
+          clearAuthToken();
           setIsAuthenticated(false);
           setHasProfile(false);
         }
@@ -43,7 +44,7 @@ function App() {
   }, [isAuthenticated]);
 
   const handleLoginSuccess = (token) => {
-    localStorage.setItem('token', token);
+    setAuthToken(token);
     setIsAuthenticated(true);
     setSelectedUserProfileId(null);
     setPendingChatUserId(null);
@@ -51,7 +52,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    clearAuthToken();
     setIsAuthenticated(false);
     setHasProfile(false);
     setSelectedUserProfileId(null);
