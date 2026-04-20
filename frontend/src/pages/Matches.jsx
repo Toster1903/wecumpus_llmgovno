@@ -4,6 +4,7 @@ import { Heart, X, MapPin, Sparkles } from 'lucide-react';
 
 const Matches = ({ onUnauthorized }) => {
   const [users, setUsers] = useState([]);
+  const [myProfile, setMyProfile] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +37,36 @@ const Matches = ({ onUnauthorized }) => {
 
   useEffect(() => {
     fetchMatches();
+    api.get('/profiles/me')
+      .then((res) => setMyProfile(res.data))
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          onUnauthorized?.();
+        }
+      });
   }, []);
+
+  const buildMatchMeta = (candidate) => {
+    const myInterests = (myProfile?.interests || []).map((item) => item.toLowerCase().trim());
+    const candidateInterests = (candidate?.interests || []).map((item) => item.toLowerCase().trim());
+
+    const common = candidateInterests.filter((interest) => myInterests.includes(interest));
+    const unique = new Set([...myInterests, ...candidateInterests]);
+    const interestSimilarity = unique.size ? common.length / unique.size : 0;
+
+    const ageDiff = Math.abs((myProfile?.age || candidate.age) - candidate.age);
+    const agePenalty = Math.min(ageDiff * 2, 25);
+
+    const rawScore = 55 + Math.round(interestSimilarity * 35) - agePenalty;
+    const score = Math.max(48, Math.min(97, rawScore));
+
+    let reason = `У вас пересекаются интересы: ${common.slice(0, 2).join(', ')}.`;
+    if (!common.length) {
+      reason = 'Похожие интересы и стиль анкеты по AI-анализу.';
+    }
+
+    return { score, reason };
+  };
 
   const handleApplyFilters = async (event) => {
     event.preventDefault();
@@ -115,6 +145,7 @@ const Matches = ({ onUnauthorized }) => {
   }
 
   const current = users[currentIndex];
+  const matchMeta = buildMatchMeta(current);
 
   return (
     <div className="space-y-4">
@@ -186,7 +217,7 @@ const Matches = ({ onUnauthorized }) => {
             {/* Match Percentage Badge */}
             <div className="absolute top-4 right-4 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full w-16 h-16 flex items-center justify-center shadow-xl backdrop-blur-md border border-white/40">
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">92%</p>
+                <p className="text-2xl font-bold text-white">{matchMeta.score}%</p>
                 <p className="text-xs text-white/90">совпадение</p>
               </div>
             </div>
@@ -214,7 +245,7 @@ const Matches = ({ onUnauthorized }) => {
             {/* Why Match */}
             <div className="backdrop-blur-md bg-cyan-500/10 rounded-lg p-3 border border-cyan-300/30">
               <p className="text-xs text-slate-600 mb-2 font-semibold">Почему вы совпадаете:</p>
-              <p className="text-sm text-slate-700 italic">"{current.bio}"</p>
+              <p className="text-sm text-slate-700 italic">"{matchMeta.reason}"</p>
             </div>
 
             {/* Action Buttons */}

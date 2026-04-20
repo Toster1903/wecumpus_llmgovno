@@ -66,8 +66,8 @@ const Dashboard = () => {
           ) : (
             <div className="space-y-2">
               {mutualMatches.map((item) => (
-                <div key={`${item.username}-${item.matched_at}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
-                  <p className="text-slate-800 font-medium">{item.username}</p>
+                <div key={`${item.name}-${item.matched_at}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
+                  <p className="text-slate-800 font-medium">{item.name}</p>
                 </div>
               ))}
             </div>
@@ -85,9 +85,9 @@ const Dashboard = () => {
           ) : (
             <div className="space-y-2 max-h-80 overflow-auto pr-1">
               {history.map((item, index) => (
-                <div key={`${item.matched_user_email}-${index}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
+                <div key={`${item.matched_user_name}-${index}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
                   <p className="text-slate-800 font-medium">
-                    {item.action === 'like' ? 'Лайк' : 'Пропуск'} для {item.matched_user_email}
+                    {item.action === 'like' ? 'Лайк' : 'Пропуск'} для {item.matched_user_name}
                   </p>
                   <p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</p>
                 </div>

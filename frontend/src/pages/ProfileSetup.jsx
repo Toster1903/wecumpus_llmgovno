@@ -7,7 +7,47 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
   const [bio, setBio] = useState('');
   const [interests, setInterests] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState('AI анализирует вашу анкету...');
   const [errorMessage, setErrorMessage] = useState('');
+
+  const waitForAnalysis = async () => {
+    setIsAnalyzing(true);
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      try {
+        const response = await api.get('/profiles/me/status');
+        const status = response?.data?.status;
+        const message = response?.data?.message;
+        if (message) {
+          setAnalysisMessage(message);
+        }
+
+        if (status === 'ready') {
+          onProfileCreated();
+          return;
+        }
+
+        if (status === 'failed') {
+          setErrorMessage('AI-анализ не завершился. Попробуйте сохранить профиль еще раз.');
+          setIsAnalyzing(false);
+          return;
+        }
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          onLogout();
+          return;
+        }
+      }
+
+      // Poll every 1.5 seconds while embedding is being generated.
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    setErrorMessage('AI-анализ занимает больше времени обычного. Подождите немного и обновите страницу.');
+    setIsAnalyzing(false);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -27,7 +67,7 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
         interests: parsedInterests,
       });
 
-      onProfileCreated();
+      await waitForAnalysis();
     } catch (error) {
       if (error?.response?.status === 401) {
         onLogout();
@@ -119,12 +159,18 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
             </div>
           )}
 
+          {isAnalyzing && (
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-300/50 px-4 py-3 text-sm text-emerald-700">
+              {analysisMessage}
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isAnalyzing}
             className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-2.5 font-medium transition shadow-lg disabled:opacity-70"
           >
-            {isSubmitting ? 'Сохраняем...' : 'Создать профиль'}
+            {isSubmitting ? 'Сохраняем...' : isAnalyzing ? 'AI анализирует...' : 'Создать профиль'}
           </button>
         </form>
       </div>

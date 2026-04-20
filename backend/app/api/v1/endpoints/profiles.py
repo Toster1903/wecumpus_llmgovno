@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut
+from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut, ProfileAnalysisStatus
 from app.services import profile_service
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -26,6 +26,22 @@ def get_my_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
+
+
+@router.get("/me/status", response_model=ProfileAnalysisStatus)
+def get_my_profile_analysis_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    status = profile_service.get_profile_analysis_status(db, current_user.id)
+
+    if status == "missing":
+        return {"status": "missing", "message": "Профиль еще не создан."}
+    if status == "processing":
+        return {"status": "processing", "message": "AI анализирует вашу анкету..."}
+    if status == "failed":
+        return {"status": "failed", "message": "Не удалось завершить AI-анализ анкеты."}
+    return {"status": "ready", "message": "AI-анализ анкеты завершен."}
 
 @router.patch("/me", response_model=ProfileOut)
 def update_my_profile(

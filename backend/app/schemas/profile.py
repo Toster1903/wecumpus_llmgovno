@@ -24,3 +24,8 @@ class ProfileOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ProfileAnalysisStatus(BaseModel):
+    status: str
+    message: str
