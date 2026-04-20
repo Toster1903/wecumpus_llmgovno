@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Edit2, Sparkles } from 'lucide-react';
 import api from '../api/axios';
 import InterestsInput from '../components/InterestsInput';
+import PrivateHabitsForm, { createEmptyHabits, sanitizeHabits } from '../components/PrivateHabitsForm';
 
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -11,6 +12,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [privateHabits, setPrivateHabits] = useState(createEmptyHabits());
   const avatarInputRef = useRef(null);
 
   useEffect(() => {
@@ -18,8 +20,16 @@ const ProfileBuilder = ({ onUnauthorized }) => {
       setIsLoading(true);
       setErrorMessage('');
       try {
-        const response = await api.get('/profiles/me');
-        setProfile(response.data);
+        const [profileResponse, privateResponse] = await Promise.all([
+          api.get('/profiles/me'),
+          api.get('/profiles/me/preferences'),
+        ]);
+
+        setProfile(profileResponse.data);
+        setPrivateHabits({
+          ...createEmptyHabits(),
+          ...(privateResponse?.data?.private_habits || {}),
+        });
       } catch (error) {
         if (error?.response?.status === 401) {
           onUnauthorized?.();
@@ -87,6 +97,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
         bio: profile.bio,
         interests: (profile.interests || []).map((item) => item.trim()).filter(Boolean),
         avatar_url: profile.avatar_url || null,
+        private_habits: sanitizeHabits(privateHabits),
       };
 
       const response = await api.patch('/profiles/me', payload);
@@ -202,6 +213,12 @@ const ProfileBuilder = ({ onUnauthorized }) => {
           value={profile.bio}
           onChange={(event) => updateField('bio', event.target.value)}
           className="w-full backdrop-blur-md bg-white/60 border border-slate-300/50 rounded-xl p-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+
+        <PrivateHabitsForm
+          habits={privateHabits}
+          onChange={setPrivateHabits}
+          title="Приватно для поиска соседей"
         />
 
         {errorMessage && (

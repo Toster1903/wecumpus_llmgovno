@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import api from '../api/axios';
 import InterestsInput from '../components/InterestsInput';
+import PrivateHabitsForm, { createEmptyHabits, sanitizeHabits } from '../components/PrivateHabitsForm';
 
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -10,6 +11,7 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
   const [bio, setBio] = useState('');
   const [interests, setInterests] = useState([]);
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [privateHabits, setPrivateHabits] = useState(createEmptyHabits());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState('AI анализирует вашу анкету...');
@@ -101,6 +103,7 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
         bio,
         interests: parsedInterests,
         avatar_url: avatarUrl || null,
+        private_habits: sanitizeHabits(privateHabits),
       });
 
       await waitForAnalysis();
@@ -227,6 +230,12 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
               required
             />
           </div>
+
+          <PrivateHabitsForm
+            habits={privateHabits}
+            onChange={setPrivateHabits}
+            title="Приватно для поиска соседей по комнате"
+          />
 
           {errorMessage && (
             <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-2 text-sm text-red-700">

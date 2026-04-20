@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react';
-import Matches from './pages/Matches';
-import Dashboard from './pages/Dashboard';
 import ProfileBuilder from './pages/ProfileBuilder';
 import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
-import Chat from './pages/Chat';
+import ServiceHub from './pages/ServiceHub';
 import api from './api/axios';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(localStorage.getItem('token')));
   const [isCheckingProfile, setIsCheckingProfile] = useState(Boolean(localStorage.getItem('token')));
   const [hasProfile, setHasProfile] = useState(false);
-  const [currentPage, setCurrentPage] = useState('matches');
+  const [currentPage, setCurrentPage] = useState('service');
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -44,14 +42,14 @@ function App() {
   const handleLoginSuccess = (token) => {
     localStorage.setItem('token', token);
     setIsAuthenticated(true);
-    setCurrentPage('matches');
+    setCurrentPage('service');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     setHasProfile(false);
-    setCurrentPage('matches');
+    setCurrentPage('service');
   };
 
   if (!isAuthenticated) {
@@ -73,7 +71,7 @@ function App() {
       <ProfileSetup
         onProfileCreated={() => {
           setHasProfile(true);
-          setCurrentPage('matches');
+          setCurrentPage('service');
         }}
         onLogout={handleLogout}
       />
@@ -89,34 +87,14 @@ function App() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">🦋 Wecupmus</h1>
             <div className="flex gap-4">
               <button
-                onClick={() => setCurrentPage('matches')}
+                onClick={() => setCurrentPage('service')}
                 className={`px-4 py-2 rounded-lg transition ${
-                  currentPage === 'matches'
+                  currentPage === 'service'
                     ? 'bg-emerald-500 text-white shadow-lg'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
-                Матчи
-              </button>
-              <button
-                onClick={() => setCurrentPage('dashboard')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  currentPage === 'dashboard'
-                    ? 'bg-emerald-500 text-white shadow-lg'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-                }`}
-              >
-                Панель
-              </button>
-              <button
-                onClick={() => setCurrentPage('chat')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  currentPage === 'chat'
-                    ? 'bg-emerald-500 text-white shadow-lg'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-                }`}
-              >
-                Чат
+                Сервис
               </button>
               <button
                 onClick={() => setCurrentPage('profile')}
@@ -141,9 +119,7 @@ function App() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
-        {currentPage === 'matches' && <Matches onUnauthorized={handleLogout} />}
-        {currentPage === 'dashboard' && <Dashboard onUnauthorized={handleLogout} />}
-        {currentPage === 'chat' && <Chat onUnauthorized={handleLogout} />}
+        {currentPage === 'service' && <ServiceHub onUnauthorized={handleLogout} />}
         {currentPage === 'profile' && <ProfileBuilder onUnauthorized={handleLogout} />}
       </div>
     </div>

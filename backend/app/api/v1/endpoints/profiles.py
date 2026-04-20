@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut, ProfileAnalysisStatus
+from app.schemas.profile import (
+    ProfileCreate,
+    ProfileUpdate,
+    ProfileOut,
+    ProfileAnalysisStatus,
+    ProfilePrivatePreferencesOut,
+)
 from app.services import profile_service, message_service
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -26,6 +32,17 @@ def get_my_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
+
+
+@router.get("/me/preferences", response_model=ProfilePrivatePreferencesOut)
+def get_my_private_preferences(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    profile = profile_service.get_current_profile(db, current_user.id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return {"private_habits": profile.private_habits}
 
 
 @router.get("/user/{user_id}", response_model=ProfileOut)

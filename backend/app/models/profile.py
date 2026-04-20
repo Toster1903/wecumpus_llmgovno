@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, ARRAY, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, ARRAY, Boolean, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import UserDefinedType
 from app.db.session import Base
@@ -20,6 +20,7 @@ class Profile(Base):
     bio = Column(Text) # "Я люблю тишину и программировать по ночам"
     interests = Column(ARRAY(String)) # ["python", "gaming", "rock"]
     avatar_url = Column(Text, nullable=True)
+    private_habits = Column(JSON, nullable=True)
     
     # 384 — это размерность вектора модели MiniLM
     embedding = Column(Vector(384)) 

@@ -17,6 +17,7 @@ Base.metadata.create_all(bind=engine)
 
 with engine.connect() as conn:
     conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
+    conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS private_habits JSONB;"))
     conn.commit()
 
 app = FastAPI(title="Wecupmus API")

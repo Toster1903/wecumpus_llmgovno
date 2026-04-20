@@ -4,11 +4,11 @@ from app.models.profile import Profile
 from typing import List
 
 
-def _load_name_map(db: Session, user_ids: list[int]) -> dict[int, str]:
+def _load_profile_map(db: Session, user_ids: list[int]) -> dict[int, Profile]:
     if not user_ids:
         return {}
     profiles = db.query(Profile).filter(Profile.user_id.in_(user_ids)).all()
-    return {p.user_id: p.full_name for p in profiles}
+    return {p.user_id: p for p in profiles}
 
 async def like_user(user_id: int, matched_user_id: int, db: Session) -> Match:
     """Record or update like action for a user pair"""
@@ -64,12 +64,13 @@ async def get_mutual_matches(user_id: int, db: Session) -> List[dict]:
         Match.action == "like"
     ).all()
 
-    name_map = _load_name_map(db, [m.user_id for m in mutual_matches])
+    profile_map = _load_profile_map(db, [m.user_id for m in mutual_matches])
     
     return [
         {
             "user_id": m.user_id,
-            "name": name_map.get(m.user_id, "Пользователь"),
+            "name": profile_map.get(m.user_id).full_name if profile_map.get(m.user_id) else "Пользователь",
+            "avatar_url": profile_map.get(m.user_id).avatar_url if profile_map.get(m.user_id) else None,
             "matched_at": m.created_at
         }
         for m in mutual_matches
@@ -81,11 +82,11 @@ async def get_match_history(user_id: int, db: Session, limit: int = 50) -> List[
         Match.user_id == user_id
     ).order_by(Match.created_at.desc()).limit(limit).all()
 
-    name_map = _load_name_map(db, [m.matched_user_id for m in matches])
+    profile_map = _load_profile_map(db, [m.matched_user_id for m in matches])
     
     return [
         {
-            "matched_user_name": name_map.get(m.matched_user_id, "Пользователь"),
+            "matched_user_name": profile_map.get(m.matched_user_id).full_name if profile_map.get(m.matched_user_id) else "Пользователь",
             "action": m.action,
             "created_at": m.created_at
         }
