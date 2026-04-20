@@ -73,7 +73,7 @@ async def get_match_history(user_id: int, db: Session, limit: int = 50) -> List[
     
     return [
         {
-            "matched_user_id": m.matched_user_id,
+            "matched_user_email": m.matched_user.email if m.matched_user else "Пользователь",
             "action": m.action,
             "created_at": m.created_at
         }

@@ -51,8 +51,15 @@ def update_profile(db: Session, user_id: int, profile_in: ProfileUpdate):
     db.refresh(profile)
     return profile
 
-def get_matches(db: Session, user_id: int):
-    """Get all profiles except current user's, excluding already actioned (liked/skipped)"""
+def get_matches(
+    db: Session,
+    user_id: int,
+    q: str | None = None,
+    interest: str | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+):
+    """Get profiles for matching with optional filters and excluding already actioned users."""
     # Get already actioned user IDs
     already_actioned = db.query(Match.matched_user_id).filter(
         Match.user_id == user_id
@@ -65,5 +72,19 @@ def get_matches(db: Session, user_id: int):
     
     if already_actioned_ids:
         query = query.filter(~Profile.user_id.in_(already_actioned_ids))
+
+    if q:
+        query = query.filter(
+            Profile.full_name.ilike(f"%{q}%") | Profile.bio.ilike(f"%{q}%")
+        )
+
+    if interest:
+        query = query.filter(Profile.interests.any(interest))
+
+    if min_age is not None:
+        query = query.filter(Profile.age >= min_age)
+
+    if max_age is not None:
+        query = query.filter(Profile.age <= max_age)
     
     return query.all()

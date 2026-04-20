@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HeartHandshake, History, Sparkles } from 'lucide-react';
+import { HeartHandshake, History } from 'lucide-react';
 import api from '../api/axios';
 
 const Dashboard = () => {
@@ -66,9 +66,8 @@ const Dashboard = () => {
           ) : (
             <div className="space-y-2">
               {mutualMatches.map((item) => (
-                <div key={item.user_id} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
+                <div key={`${item.username}-${item.matched_at}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
                   <p className="text-slate-800 font-medium">{item.username}</p>
-                  <p className="text-xs text-slate-500">ID: {item.user_id}</p>
                 </div>
               ))}
             </div>
@@ -86,9 +85,9 @@ const Dashboard = () => {
           ) : (
             <div className="space-y-2 max-h-80 overflow-auto pr-1">
               {history.map((item, index) => (
-                <div key={`${item.matched_user_id}-${index}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
+                <div key={`${item.matched_user_email}-${index}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
                   <p className="text-slate-800 font-medium">
-                    {item.action === 'like' ? 'Лайк' : 'Пропуск'} для пользователя #{item.matched_user_id}
+                    {item.action === 'like' ? 'Лайк' : 'Пропуск'} для {item.matched_user_email}
                   </p>
                   <p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</p>
                 </div>
@@ -96,11 +95,6 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-5 flex items-center gap-3 text-slate-700">
-        <Sparkles className="text-amber-500" size={20} />
-        Лайки и пропуски теперь отправляются в backend и отображаются в истории.
       </div>
     </div>
   );

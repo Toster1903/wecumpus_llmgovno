@@ -41,6 +41,17 @@ def update_my_profile(
 @router.get("/match", response_model=List[ProfileOut])
 def match_neighbors(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    q: str | None = None,
+    interest: str | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
 ):
-    return profile_service.get_matches(db, current_user.id)
+    return profile_service.get_matches(
+        db,
+        current_user.id,
+        q=q,
+        interest=interest,
+        min_age=min_age,
+        max_age=max_age,
+    )

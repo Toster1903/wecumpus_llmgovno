@@ -8,12 +8,18 @@ const Matches = ({ onUnauthorized }) => {
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [interestFilter, setInterestFilter] = useState('');
+  const [minAgeFilter, setMinAgeFilter] = useState('');
+  const [maxAgeFilter, setMaxAgeFilter] = useState('');
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (filters = {}) => {
     setIsLoading(true);
     setErrorMessage('');
     try {
-      const response = await api.get('/profiles/match');
+      const response = await api.get('/profiles/match', {
+        params: filters,
+      });
       setUsers(response.data);
       setCurrentIndex(0);
     } catch (err) {
@@ -31,6 +37,24 @@ const Matches = ({ onUnauthorized }) => {
   useEffect(() => {
     fetchMatches();
   }, []);
+
+  const handleApplyFilters = async (event) => {
+    event.preventDefault();
+    await fetchMatches({
+      q: searchQuery || undefined,
+      interest: interestFilter || undefined,
+      min_age: minAgeFilter ? Number(minAgeFilter) : undefined,
+      max_age: maxAgeFilter ? Number(maxAgeFilter) : undefined,
+    });
+  };
+
+  const handleResetFilters = async () => {
+    setSearchQuery('');
+    setInterestFilter('');
+    setMinAgeFilter('');
+    setMaxAgeFilter('');
+    await fetchMatches();
+  };
 
   const sendAction = async (action) => {
     if (!users.length || isSubmittingAction) {
@@ -93,7 +117,61 @@ const Matches = ({ onUnauthorized }) => {
   const current = users[currentIndex];
 
   return (
-    <div className="grid grid-cols-3 gap-6 h-full">
+    <div className="space-y-4">
+      <form
+        onSubmit={handleApplyFilters}
+        className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4 grid grid-cols-4 gap-3"
+      >
+        <input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          className="rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          placeholder="Поиск по имени или био"
+        />
+        <input
+          value={interestFilter}
+          onChange={(event) => setInterestFilter(event.target.value)}
+          className="rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          placeholder="Интерес (например chess)"
+        />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="16"
+            max="100"
+            value={minAgeFilter}
+            onChange={(event) => setMinAgeFilter(event.target.value)}
+            className="w-full rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Мин. возраст"
+          />
+          <input
+            type="number"
+            min="16"
+            max="100"
+            value={maxAgeFilter}
+            onChange={(event) => setMaxAgeFilter(event.target.value)}
+            className="w-full rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Макс. возраст"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-3 py-2 transition"
+          >
+            Применить
+          </button>
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="w-full rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium px-3 py-2 transition"
+          >
+            Сброс
+          </button>
+        </div>
+      </form>
+
+      <div className="grid grid-cols-3 gap-6 h-full">
       {/* Left: Match Card */}
       <div className="col-span-1">
         <div className="backdrop-blur-xl bg-white/40 rounded-3xl overflow-hidden border border-white/60 shadow-2xl h-full flex flex-col hover:shadow-3xl transition-all">
@@ -176,6 +254,7 @@ const Matches = ({ onUnauthorized }) => {
           <p className="text-slate-700">Мой профиль</p>
           <p className="text-xs text-slate-500 mt-2">Переходите на вкладку "Профиль"</p>
         </div>
+      </div>
       </div>
     </div>
   );
