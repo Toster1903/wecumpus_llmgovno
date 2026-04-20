@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.profile import ProfileCreate, ProfileOut
+from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut
 from app.services import profile_service
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -16,6 +16,27 @@ def create_my_profile(
     current_user: User = Depends(get_current_user)
 ):
     return profile_service.create_profile(db, profile_in, current_user.id)
+
+@router.get("/me", response_model=ProfileOut)
+def get_my_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    profile = profile_service.get_current_profile(db, current_user.id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+@router.patch("/me", response_model=ProfileOut)
+def update_my_profile(
+    profile_in: ProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    profile = profile_service.update_profile(db, current_user.id, profile_in)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
 
 @router.get("/match", response_model=List[ProfileOut])
 def match_neighbors(

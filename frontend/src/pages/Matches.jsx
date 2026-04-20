@@ -2,29 +2,61 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { Heart, X, MapPin, Sparkles } from 'lucide-react';
 
-const Matches = () => {
+const Matches = ({ onUnauthorized }) => {
   const [users, setUsers] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    api.get('/profiles/match')
-      .then(res => setUsers(res.data))
-      .catch(err => {
-        if (err?.response?.status === 401) {
-          return;
-        }
-        setErrorMessage('Не удалось загрузить матчи. Попробуйте позже.');
-        console.error('Ошибка загрузки матчей', err);
-      });
-  }, []);
-
-  const handleSkip = () => {
-    setCurrentIndex((prev) => (prev + 1) % users.length);
+  const fetchMatches = async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+    try {
+      const response = await api.get('/profiles/match');
+      setUsers(response.data);
+      setCurrentIndex(0);
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+      setErrorMessage('Не удалось загрузить матчи. Попробуйте позже.');
+      console.error('Ошибка загрузки матчей', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleLike = () => {
-    setCurrentIndex((prev) => (prev + 1) % users.length);
+  useEffect(() => {
+    fetchMatches();
+  }, []);
+
+  const sendAction = async (action) => {
+    if (!users.length || isSubmittingAction) {
+      return;
+    }
+
+    const current = users[currentIndex];
+    setIsSubmittingAction(true);
+    setErrorMessage('');
+
+    try {
+      await api.post(`/matches/${action}`, {
+        matched_user_id: current.user_id,
+      });
+
+      await fetchMatches();
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+      setErrorMessage('Не удалось отправить действие. Попробуйте снова.');
+      console.error('Ошибка отправки действия', err);
+    } finally {
+      setIsSubmittingAction(false);
+    }
   };
 
   if (errorMessage) {
@@ -35,12 +67,24 @@ const Matches = () => {
     );
   }
 
-  if (users.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <Sparkles size={48} className="mx-auto mb-4 text-slate-400" />
           <p className="text-xl text-slate-400">Загружаем соседей...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (users.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center backdrop-blur-xl bg-white/50 border border-white/70 rounded-3xl px-10 py-8">
+          <Sparkles size={40} className="mx-auto mb-4 text-emerald-500" />
+          <p className="text-xl text-slate-700">Подходящих анкет пока нет</p>
+          <p className="text-sm text-slate-500 mt-2">Попробуйте позже, когда появятся новые пользователи.</p>
         </div>
       </div>
     );
@@ -98,14 +142,16 @@ const Matches = () => {
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <button
-                onClick={handleSkip}
-                className="flex-1 backdrop-blur-md bg-slate-900/10 hover:bg-slate-900/20 text-slate-700 py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 border border-slate-300/50"
+                onClick={() => sendAction('skip')}
+                disabled={isSubmittingAction}
+                className="flex-1 backdrop-blur-md bg-slate-900/10 hover:bg-slate-900/20 text-slate-700 py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 border border-slate-300/50 disabled:opacity-60"
               >
                 <X size={20} /> Пропустить
               </button>
               <button
-                onClick={handleLike}
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-lg"
+                onClick={() => sendAction('like')}
+                disabled={isSubmittingAction}
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
               >
                 <Heart size={20} /> Позвать
               </button>

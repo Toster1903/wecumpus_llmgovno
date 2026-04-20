@@ -1,25 +1,82 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Matches from './pages/Matches';
 import Dashboard from './pages/Dashboard';
 import ProfileBuilder from './pages/ProfileBuilder';
+import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
+import api from './api/axios';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(localStorage.getItem('token')));
+  const [isCheckingProfile, setIsCheckingProfile] = useState(Boolean(localStorage.getItem('token')));
+  const [hasProfile, setHasProfile] = useState(false);
   const [currentPage, setCurrentPage] = useState('matches');
+
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (!isAuthenticated) {
+        setIsCheckingProfile(false);
+        setHasProfile(false);
+        return;
+      }
+
+      setIsCheckingProfile(true);
+      try {
+        await api.get('/profiles/me');
+        setHasProfile(true);
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          setHasProfile(false);
+        } else if (error?.response?.status === 401) {
+          localStorage.removeItem('token');
+          setIsAuthenticated(false);
+          setHasProfile(false);
+        }
+      } finally {
+        setIsCheckingProfile(false);
+      }
+    };
+
+    checkProfile();
+  }, [isAuthenticated]);
 
   const handleLoginSuccess = (token) => {
     localStorage.setItem('token', token);
     setIsAuthenticated(true);
+    setCurrentPage('matches');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
+    setHasProfile(false);
+    setCurrentPage('matches');
   };
 
   if (!isAuthenticated) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  if (isCheckingProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-slate-900 flex items-center justify-center">
+        <div className="backdrop-blur-xl bg-white/50 border border-white/70 rounded-3xl px-8 py-6 text-slate-700">
+          Проверяем профиль...
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasProfile) {
+    return (
+      <ProfileSetup
+        onProfileCreated={() => {
+          setHasProfile(true);
+          setCurrentPage('matches');
+        }}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
@@ -73,7 +130,7 @@ function App() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
-        {currentPage === 'matches' && <Matches />}
+        {currentPage === 'matches' && <Matches onUnauthorized={handleLogout} />}
         {currentPage === 'dashboard' && <Dashboard />}
         {currentPage === 'profile' && <ProfileBuilder />}
       </div>

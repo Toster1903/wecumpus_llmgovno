@@ -1,89 +1,160 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Edit2, Sparkles } from 'lucide-react';
+import api from '../api/axios';
 
 const ProfileBuilder = () => {
-  const [profile, setProfile] = useState({
-    name: 'Sam R.',
-    age: 20,
-    major: 'CS Major',
-    interests: ['Coding', 'Chess', 'Coffee', 'Gaming', 'Music', 'Art', 'Fitness', 'Drama'],
-    bio: 'Enthusiastic CS major who loves coding, chess, and finding the perfect coffee blend.',
-    aiSuggestion: 'Enthusiastic CS major who loves coding, chess, and finding the perfect coffee blend.',
-  });
+  const [profile, setProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setIsLoading(true);
+      setErrorMessage('');
+      try {
+        const response = await api.get('/profiles/me');
+        setProfile(response.data);
+      } catch (error) {
+        setErrorMessage(error?.response?.data?.detail || 'Не удалось загрузить профиль.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const interestsText = useMemo(() => {
+    if (!profile?.interests?.length) {
+      return '';
+    }
+    return profile.interests.join(', ');
+  }, [profile?.interests]);
+
+  const updateField = (field, value) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!profile) {
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const payload = {
+        full_name: profile.full_name,
+        age: Number(profile.age),
+        bio: profile.bio,
+        interests: (profile.interests || []).map((item) => item.trim()).filter(Boolean),
+      };
+
+      const response = await api.patch('/profiles/me', payload);
+      setProfile(response.data);
+      setSuccessMessage('Профиль сохранен.');
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.detail || 'Не удалось сохранить профиль.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="backdrop-blur-xl bg-white/50 rounded-3xl border border-white/70 p-8 text-slate-700">
+        Загружаем профиль...
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="backdrop-blur-xl bg-red-500/10 rounded-3xl border border-red-300/50 p-8 text-red-700">
+        {errorMessage || 'Профиль не найден.'}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-3 gap-6">
-      {/* Profile Card */}
       <div className="col-span-1 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 overflow-hidden hover:shadow-lg transition-all">
-        {/* Photo Section */}
         <div className="bg-gradient-to-br from-emerald-100 to-cyan-100 h-48 flex items-center justify-center relative border-b border-white/40">
           <div className="text-6xl">👤</div>
-          <button className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-full hover:from-emerald-600 hover:to-emerald-700 transition shadow-md">
+          <button className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-full shadow-md">
             <Edit2 size={18} className="text-white" />
           </button>
         </div>
 
-        {/* Profile Info */}
         <div className="p-6 space-y-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{profile.name}</h1>
-            <p className="text-slate-500 text-sm">{profile.major}</p>
+            <p className="text-xs text-slate-600 font-semibold mb-1">ИМЯ</p>
+            <input
+              value={profile.full_name}
+              onChange={(event) => updateField('full_name', event.target.value)}
+              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
 
-          {/* Interests */}
           <div>
-            <p className="text-xs text-slate-600 font-semibold mb-2">ИНТЕРЕСЫ</p>
-            <div className="flex flex-wrap gap-2">
-              {profile.interests.map(interest => (
-                <span
-                  key={interest}
-                  className="backdrop-blur-md bg-emerald-500/20 text-emerald-700 px-3 py-1 rounded-full text-xs font-medium border border-emerald-300/50"
-                >
-                  {interest}
-                </span>
-              ))}
-            </div>
+            <p className="text-xs text-slate-600 font-semibold mb-1">ВОЗРАСТ</p>
+            <input
+              type="number"
+              min="16"
+              max="100"
+              value={profile.age}
+              onChange={(event) => updateField('age', event.target.value)}
+              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
 
-          {/* About Me */}
           <div>
-            <p className="text-xs text-slate-600 font-semibold mb-2">ABOUT ME (BIO)</p>
-            <p className="text-sm text-slate-700 italic">"{profile.bio}"</p>
+            <p className="text-xs text-slate-600 font-semibold mb-1">ИНТЕРЕСЫ</p>
+            <input
+              value={interestsText}
+              onChange={(event) => updateField('interests', event.target.value.split(','))}
+              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <p className="text-xs text-slate-500 mt-1">Через запятую</p>
           </div>
-
-          {/* Edit Button */}
-          <button className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-2 rounded-lg font-medium transition mt-4 shadow-md">
-            Редактировать профиль
-          </button>
         </div>
       </div>
 
-      {/* AI Suggestion */}
       <div className="col-span-2 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6 space-y-4 hover:shadow-lg transition-all">
         <div className="flex items-center gap-2">
           <Sparkles className="text-amber-500" size={24} />
-          <h2 className="text-xl font-bold text-slate-900">AI Suggestion</h2>
+          <h2 className="text-xl font-bold text-slate-900">О себе</h2>
         </div>
 
-        <div className="backdrop-blur-md bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-4 min-h-32 space-y-4 border border-amber-300/30">
-          <p className="text-slate-700">{profile.aiSuggestion}</p>
+        <textarea
+          rows="8"
+          value={profile.bio}
+          onChange={(event) => updateField('bio', event.target.value)}
+          className="w-full backdrop-blur-md bg-white/60 border border-slate-300/50 rounded-xl p-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
 
-          {/* Editable Bio */}
-          <div>
-            <label className="block text-xs text-slate-600 font-semibold mb-2">ОПТИМИЗИРОВАННОЕ ОПИСАНИЕ</label>
-            <textarea
-              className="w-full backdrop-blur-md bg-white/50 border border-slate-300/50 rounded-lg p-3 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400"
-              rows="4"
-              value={profile.aiSuggestion}
-              onChange={(e) =>
-                setProfile({ ...profile, aiSuggestion: e.target.value })
-              }
-            />
+        {errorMessage && (
+          <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-2 text-sm text-red-700">
+            {errorMessage}
           </div>
-        </div>
+        )}
 
-        <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-md">
-          Применить
+        {successMessage && (
+          <div className="rounded-xl bg-emerald-500/10 border border-emerald-300/50 px-4 py-2 text-sm text-emerald-700">
+            {successMessage}
+          </div>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-md disabled:opacity-70"
+        >
+          {isSaving ? 'Сохраняем...' : 'Сохранить'}
         </button>
       </div>
     </div>
