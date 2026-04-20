@@ -40,8 +40,6 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
         }
       }
 
-      // Poll every 1.5 seconds while embedding is being generated.
-      // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
 

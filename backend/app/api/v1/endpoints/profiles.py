@@ -28,6 +28,18 @@ def get_my_profile(
     return profile
 
 
+@router.get("/user/{user_id}", response_model=ProfileOut)
+def get_profile_by_user_id(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    profile = profile_service.get_current_profile(db, user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+
 @router.get("/me/status", response_model=ProfileAnalysisStatus)
 def get_my_profile_analysis_status(
     db: Session = Depends(get_db),
