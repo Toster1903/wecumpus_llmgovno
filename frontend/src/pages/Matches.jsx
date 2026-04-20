@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios';
 import { Heart, X, MapPin, Sparkles } from 'lucide-react';
 
@@ -14,7 +14,7 @@ const Matches = ({ onUnauthorized }) => {
   const [minAgeFilter, setMinAgeFilter] = useState('');
   const [maxAgeFilter, setMaxAgeFilter] = useState('');
 
-  const fetchMatches = async (filters = {}) => {
+  const fetchMatches = useCallback(async (filters = {}) => {
     setIsLoading(true);
     setErrorMessage('');
     try {
@@ -33,10 +33,13 @@ const Matches = ({ onUnauthorized }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onUnauthorized]);
 
   useEffect(() => {
-    fetchMatches();
+    const loadMatches = async () => {
+      await fetchMatches();
+    };
+    loadMatches();
     api.get('/profiles/me')
       .then((res) => setMyProfile(res.data))
       .catch((err) => {
@@ -44,7 +47,7 @@ const Matches = ({ onUnauthorized }) => {
           onUnauthorized?.();
         }
       });
-  }, []);
+  }, [fetchMatches, onUnauthorized]);
 
   const buildMatchMeta = (candidate) => {
     const myInterests = (myProfile?.interests || []).map((item) => item.toLowerCase().trim());
@@ -57,8 +60,8 @@ const Matches = ({ onUnauthorized }) => {
     const ageDiff = Math.abs((myProfile?.age || candidate.age) - candidate.age);
     const agePenalty = Math.min(ageDiff * 2, 25);
 
-    const rawScore = 55 + Math.round(interestSimilarity * 35) - agePenalty;
-    const score = Math.max(48, Math.min(97, rawScore));
+    const rawScore = 28 + Math.round(interestSimilarity * 52) - agePenalty;
+    const score = Math.max(22, Math.min(88, rawScore));
 
     let reason = `У вас пересекаются интересы: ${common.slice(0, 2).join(', ')}.`;
     if (!common.length) {

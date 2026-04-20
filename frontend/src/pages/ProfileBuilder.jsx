@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Edit2, Sparkles } from 'lucide-react';
 import api from '../api/axios';
 
-const ProfileBuilder = () => {
+const ProfileBuilder = ({ onUnauthorized }) => {
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -17,6 +17,10 @@ const ProfileBuilder = () => {
         const response = await api.get('/profiles/me');
         setProfile(response.data);
       } catch (error) {
+        if (error?.response?.status === 401) {
+          onUnauthorized?.();
+          return;
+        }
         setErrorMessage(error?.response?.data?.detail || 'Не удалось загрузить профиль.');
       } finally {
         setIsLoading(false);
@@ -24,14 +28,9 @@ const ProfileBuilder = () => {
     };
 
     fetchProfile();
-  }, []);
+  }, [onUnauthorized]);
 
-  const interestsText = useMemo(() => {
-    if (!profile?.interests?.length) {
-      return '';
-    }
-    return profile.interests.join(', ');
-  }, [profile?.interests]);
+  const interestsText = profile?.interests?.length ? profile.interests.join(', ') : '';
 
   const updateField = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -58,6 +57,10 @@ const ProfileBuilder = () => {
       setProfile(response.data);
       setSuccessMessage('Профиль сохранен.');
     } catch (error) {
+      if (error?.response?.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
       setErrorMessage(error?.response?.data?.detail || 'Не удалось сохранить профиль.');
     } finally {
       setIsSaving(false);

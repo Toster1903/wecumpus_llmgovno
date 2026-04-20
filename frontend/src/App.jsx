@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import ProfileBuilder from './pages/ProfileBuilder';
 import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
+import Chat from './pages/Chat';
 import api from './api/axios';
 
 function App() {
@@ -108,6 +109,16 @@ function App() {
                 Панель
               </button>
               <button
+                onClick={() => setCurrentPage('chat')}
+                className={`px-4 py-2 rounded-lg transition ${
+                  currentPage === 'chat'
+                    ? 'bg-emerald-500 text-white shadow-lg'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                }`}
+              >
+                Чат
+              </button>
+              <button
                 onClick={() => setCurrentPage('profile')}
                 className={`px-4 py-2 rounded-lg transition ${
                   currentPage === 'profile'
@@ -131,8 +142,9 @@ function App() {
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
         {currentPage === 'matches' && <Matches onUnauthorized={handleLogout} />}
-        {currentPage === 'dashboard' && <Dashboard />}
-        {currentPage === 'profile' && <ProfileBuilder />}
+        {currentPage === 'dashboard' && <Dashboard onUnauthorized={handleLogout} />}
+        {currentPage === 'chat' && <Chat onUnauthorized={handleLogout} />}
+        {currentPage === 'profile' && <ProfileBuilder onUnauthorized={handleLogout} />}
       </div>
     </div>
   );

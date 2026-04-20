@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { HeartHandshake, History } from 'lucide-react';
 import api from '../api/axios';
 
-const Dashboard = () => {
+const Dashboard = ({ onUnauthorized }) => {
   const [mutualMatches, setMutualMatches] = useState([]);
   const [history, setHistory] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -22,6 +24,10 @@ const Dashboard = () => {
         setMutualMatches(mutualResponse.data?.mutual_matches || []);
         setHistory(historyResponse.data?.history || []);
       } catch (error) {
+        if (error?.response?.status === 401) {
+          onUnauthorized?.();
+          return;
+        }
         setErrorMessage(error?.response?.data?.detail || 'Не удалось загрузить панель.');
       } finally {
         setIsLoading(false);
@@ -29,7 +35,23 @@ const Dashboard = () => {
     };
 
     fetchDashboard();
-  }, []);
+  }, [onUnauthorized]);
+
+  const viewProfile = async (userId) => {
+    setIsLoadingProfile(true);
+    try {
+      const response = await api.get(`/profiles/user/${userId}`);
+      setSelectedProfile(response.data);
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+      setErrorMessage(error?.response?.data?.detail || 'Не удалось открыть профиль пользователя.');
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -54,7 +76,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-3 gap-6">
         <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6">
           <div className="flex items-center gap-2 mb-4">
             <HeartHandshake className="text-emerald-600" size={20} />
@@ -68,6 +90,13 @@ const Dashboard = () => {
               {mutualMatches.map((item) => (
                 <div key={`${item.name}-${item.matched_at}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
                   <p className="text-slate-800 font-medium">{item.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => viewProfile(item.user_id)}
+                    className="mt-1 text-xs text-emerald-700 hover:text-emerald-900"
+                  >
+                    Открыть профиль
+                  </button>
                 </div>
               ))}
             </div>
@@ -92,6 +121,31 @@ const Dashboard = () => {
                   <p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</p>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Профиль пользователя</h2>
+          {isLoadingProfile && <p className="text-sm text-slate-500">Загружаем профиль...</p>}
+          {!isLoadingProfile && !selectedProfile && (
+            <p className="text-sm text-slate-500">Выберите взаимный матч, чтобы посмотреть анкету.</p>
+          )}
+          {!isLoadingProfile && selectedProfile && (
+            <div className="space-y-3 text-sm text-slate-700">
+              <p className="text-xl font-semibold text-slate-900">{selectedProfile.full_name}</p>
+              <p>Возраст: {selectedProfile.age}</p>
+              <p>{selectedProfile.bio}</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedProfile.interests.map((interest) => (
+                  <span
+                    key={interest}
+                    className="rounded-full bg-emerald-500/20 border border-emerald-300/50 px-2 py-0.5 text-xs text-emerald-700"
+                  >
+                    {interest}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut, ProfileAnalysisStatus
-from app.services import profile_service
+from app.services import profile_service, message_service
 from app.api.deps import get_current_user
 from app.models.user import User
 
@@ -23,6 +23,22 @@ def get_my_profile(
     current_user: User = Depends(get_current_user)
 ):
     profile = profile_service.get_current_profile(db, current_user.id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+
+@router.get("/user/{user_id}", response_model=ProfileOut)
+def get_profile_by_user_id(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if user_id != current_user.id:
+        if not message_service.is_mutual_match(db, current_user.id, user_id):
+            raise HTTPException(status_code=403, detail="Profile available only for mutual matches")
+
+    profile = profile_service.get_current_profile(db, user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
