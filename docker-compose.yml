@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: ankane/pgvector:latest # Специальный образ Postgres уже с расширением vector
+    container_name: wecupmus_db
+    restart: always
+    environment:
+      POSTGRES_USER: dmitriy
+      POSTGRES_PASSWORD: your_password # Придумай пароль
+      POSTGRES_DB: wecupmus
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: wecupmus_backend
+    volumes:
+      - ./backend:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://dmitriy:your_password@db:5432/wecupmus
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: wecupmus_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
