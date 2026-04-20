@@ -3,6 +3,7 @@ import ProfileBuilder from './pages/ProfileBuilder';
 import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
 import ServiceHub from './pages/ServiceHub';
+import UserProfilePage from './pages/UserProfilePage';
 import api from './api/axios';
 
 function App() {
@@ -10,6 +11,8 @@ function App() {
   const [isCheckingProfile, setIsCheckingProfile] = useState(Boolean(localStorage.getItem('token')));
   const [hasProfile, setHasProfile] = useState(false);
   const [currentPage, setCurrentPage] = useState('service');
+  const [selectedUserProfileId, setSelectedUserProfileId] = useState(null);
+  const [pendingChatUserId, setPendingChatUserId] = useState(null);
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -42,6 +45,8 @@ function App() {
   const handleLoginSuccess = (token) => {
     localStorage.setItem('token', token);
     setIsAuthenticated(true);
+    setSelectedUserProfileId(null);
+    setPendingChatUserId(null);
     setCurrentPage('service');
   };
 
@@ -49,6 +54,18 @@ function App() {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     setHasProfile(false);
+    setSelectedUserProfileId(null);
+    setPendingChatUserId(null);
+    setCurrentPage('service');
+  };
+
+  const handleOpenUserProfile = (userId) => {
+    setSelectedUserProfileId(userId);
+    setCurrentPage('userProfile');
+  };
+
+  const handleStartChatFromProfile = (userId) => {
+    setPendingChatUserId(userId);
     setCurrentPage('service');
   };
 
@@ -119,8 +136,23 @@ function App() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
-        {currentPage === 'service' && <ServiceHub onUnauthorized={handleLogout} />}
+        {currentPage === 'service' && (
+          <ServiceHub
+            onUnauthorized={handleLogout}
+            onOpenUserProfile={handleOpenUserProfile}
+            initialChatUserId={pendingChatUserId}
+            onInitialChatHandled={() => setPendingChatUserId(null)}
+          />
+        )}
         {currentPage === 'profile' && <ProfileBuilder onUnauthorized={handleLogout} />}
+        {currentPage === 'userProfile' && (
+          <UserProfilePage
+            userId={selectedUserProfileId}
+            onBack={() => setCurrentPage('service')}
+            onUnauthorized={handleLogout}
+            onWrite={handleStartChatFromProfile}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Heart, HeartHandshake, History, MessageCircle, Sparkles, X } from 'lucide-react';
+import { ExternalLink, Heart, MessageCircle, Sparkles, X } from 'lucide-react';
 import api from '../api/axios';
 
-const ServiceHub = ({ onUnauthorized }) => {
+const ServiceHub = ({
+  onUnauthorized,
+  onOpenUserProfile,
+  initialChatUserId,
+  onInitialChatHandled,
+}) => {
   const [myProfile, setMyProfile] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [mutualMatches, setMutualMatches] = useState([]);
-  const [history, setHistory] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
+  const [miniProfile, setMiniProfile] = useState(null);
+  const [isMiniProfileOpen, setIsMiniProfileOpen] = useState(false);
+  const [isMiniProfileLoading, setIsMiniProfileLoading] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [interestFilter, setInterestFilter] = useState('');
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState([]);
+  const [isSearchingProfiles, setIsSearchingProfiles] = useState(false);
+  const [hasSearchedProfiles, setHasSearchedProfiles] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
@@ -52,8 +61,8 @@ const ServiceHub = ({ onUnauthorized }) => {
     return { score, reason };
   }, [myProfile]);
 
-  const loadCandidates = useCallback(async (filters = {}) => {
-    const response = await api.get('/profiles/match', { params: filters });
+  const loadCandidates = useCallback(async () => {
+    const response = await api.get('/profiles/match');
     setCandidates(response.data || []);
   }, []);
 
@@ -72,11 +81,6 @@ const ServiceHub = ({ onUnauthorized }) => {
     });
   }, []);
 
-  const loadHistory = useCallback(async () => {
-    const response = await api.get('/matches/history');
-    setHistory(response.data?.history || []);
-  }, []);
-
   const loadConversation = useCallback(async (otherUserId) => {
     if (!otherUserId) {
       setMessages([]);
@@ -87,6 +91,27 @@ const ServiceHub = ({ onUnauthorized }) => {
     setMessages(response.data || []);
   }, []);
 
+  const openChatWithUser = useCallback(
+    (userId, fallbackMessage = 'Написать можно только после взаимного мэтча.') => {
+      if (!userId) {
+        return false;
+      }
+
+      const hasMutualMatch = mutualMatches.some((item) => item.user_id === userId);
+      if (!hasMutualMatch) {
+        if (fallbackMessage) {
+          setErrorMessage(fallbackMessage);
+        }
+        return false;
+      }
+
+      setSelectedUserId(userId);
+      setErrorMessage('');
+      return true;
+    },
+    [mutualMatches]
+  );
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
@@ -96,7 +121,6 @@ const ServiceHub = ({ onUnauthorized }) => {
           api.get('/profiles/me'),
           loadCandidates(),
           loadMutualMatches(),
-          loadHistory(),
         ]);
 
         setMyProfile(profileResponse.data);
@@ -108,7 +132,7 @@ const ServiceHub = ({ onUnauthorized }) => {
     };
 
     loadInitialData();
-  }, [handleApiError, loadCandidates, loadHistory, loadMutualMatches]);
+  }, [handleApiError, loadCandidates, loadMutualMatches]);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -122,29 +146,45 @@ const ServiceHub = ({ onUnauthorized }) => {
     loadMessages();
   }, [handleApiError, loadConversation, selectedUserId]);
 
-  const applyFilters = async (event) => {
+  useEffect(() => {
+    if (!initialChatUserId || isLoading) {
+      return;
+    }
+
+    openChatWithUser(initialChatUserId, 'Чат доступен только после взаимного мэтча.');
+    onInitialChatHandled?.();
+  }, [initialChatUserId, isLoading, onInitialChatHandled, openChatWithUser]);
+
+  const searchProfilesAcrossService = async (event) => {
     event.preventDefault();
+    const query = globalSearchQuery.trim();
+
+    if (!query) {
+      setGlobalSearchResults([]);
+      setHasSearchedProfiles(false);
+      return;
+    }
+
+    setIsSearchingProfiles(true);
     setErrorMessage('');
+
     try {
-      await loadCandidates({
-        q: searchQuery || undefined,
-        interest: interestFilter || undefined,
+      const response = await api.get('/profiles/search', {
+        params: { q: query },
       });
+      setGlobalSearchResults(response.data || []);
+      setHasSearchedProfiles(true);
     } catch (error) {
-      handleApiError(error, 'Не удалось применить фильтры.');
+      handleApiError(error, 'Не удалось выполнить поиск по сервису.');
+    } finally {
+      setIsSearchingProfiles(false);
     }
   };
 
-  const resetFilters = async () => {
-    setSearchQuery('');
-    setInterestFilter('');
-    setErrorMessage('');
-
-    try {
-      await loadCandidates();
-    } catch (error) {
-      handleApiError(error, 'Не удалось сбросить фильтры.');
-    }
+  const clearGlobalSearch = () => {
+    setGlobalSearchQuery('');
+    setGlobalSearchResults([]);
+    setHasSearchedProfiles(false);
   };
 
   const sendMatchAction = async (action) => {
@@ -161,14 +201,7 @@ const ServiceHub = ({ onUnauthorized }) => {
         matched_user_id: currentCandidate.user_id,
       });
 
-      await Promise.all([
-        loadCandidates({
-          q: searchQuery || undefined,
-          interest: interestFilter || undefined,
-        }),
-        loadMutualMatches(),
-        loadHistory(),
-      ]);
+      await Promise.all([loadCandidates(), loadMutualMatches()]);
     } catch (error) {
       handleApiError(error, 'Не удалось отправить действие.');
     } finally {
@@ -200,6 +233,31 @@ const ServiceHub = ({ onUnauthorized }) => {
     }
   };
 
+  const openMiniProfile = async (userId) => {
+    if (!userId) {
+      return;
+    }
+
+    setIsMiniProfileOpen(true);
+    setIsMiniProfileLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await api.get(`/profiles/user/${userId}`);
+      setMiniProfile(response.data);
+    } catch (error) {
+      setMiniProfile(null);
+      handleApiError(error, 'Не удалось загрузить мини-профиль.');
+    } finally {
+      setIsMiniProfileLoading(false);
+    }
+  };
+
+  const closeMiniProfile = () => {
+    setIsMiniProfileOpen(false);
+    setMiniProfile(null);
+  };
+
   const selectedChatUser = useMemo(
     () => mutualMatches.find((item) => item.user_id === selectedUserId) || null,
     [mutualMatches, selectedUserId]
@@ -218,65 +276,99 @@ const ServiceHub = ({ onUnauthorized }) => {
 
   return (
     <div className="space-y-4">
-      <div className="backdrop-blur-xl bg-white/45 border border-white/60 rounded-3xl p-6">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-          Сервис подбора соседей
-        </h1>
-        <p className="text-slate-600 mt-2">
-          Матчи, история и чат объединены в одной панели. Приватные привычки используются только для поиска соседа по комнате.
-        </p>
-      </div>
-
       {errorMessage && (
         <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-3 text-sm text-red-700">
           {errorMessage}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <section className="lg:col-span-8 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles size={20} className="text-emerald-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Подбор соседей</h2>
-          </div>
+      <section className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={20} className="text-cyan-600" />
+          <h2 className="text-lg font-semibold text-slate-900">Поиск по сервису</h2>
+        </div>
 
-          <form onSubmit={applyFilters} className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="md:col-span-2 rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Поиск по имени или био"
-            />
-            <input
-              value={interestFilter}
-              onChange={(event) => setInterestFilter(event.target.value)}
-              className="rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Интерес"
-            />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-3 py-2 transition"
-              >
-                Применить
-              </button>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="w-full rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium px-3 py-2 transition"
-              >
-                Сброс
-              </button>
-            </div>
-          </form>
-
-          {!currentCandidate && (
-            <div className="rounded-2xl border border-slate-200/60 bg-white/60 p-6 text-center text-slate-600">
-              Подходящих анкет пока нет. Попробуйте изменить фильтры или зайдите позже.
-            </div>
+        <form onSubmit={searchProfilesAcrossService} className="flex flex-col md:flex-row gap-2">
+          <input
+            value={globalSearchQuery}
+            onChange={(event) => setGlobalSearchQuery(event.target.value)}
+            className="w-full rounded-xl bg-white/70 border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            placeholder="Найти профили по имени или био"
+          />
+          <button
+            type="submit"
+            disabled={isSearchingProfiles}
+            className="md:w-auto rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium px-4 py-2 transition disabled:opacity-60"
+          >
+            {isSearchingProfiles ? 'Ищем...' : 'Найти'}
+          </button>
+          {(globalSearchQuery || hasSearchedProfiles || globalSearchResults.length > 0) && (
+            <button
+              type="button"
+              onClick={clearGlobalSearch}
+              className="md:w-auto rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium px-4 py-2 transition"
+            >
+              Очистить
+            </button>
           )}
+        </form>
 
-          {currentCandidate && (
+        {hasSearchedProfiles && !isSearchingProfiles && !globalSearchResults.length && (
+          <p className="text-sm text-slate-500">Профили не найдены.</p>
+        )}
+
+        {globalSearchResults.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+            {globalSearchResults.map((profile) => (
+              <div
+                key={`service-search-${profile.user_id}`}
+                className="rounded-xl bg-white/70 border border-slate-200/60 p-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {profile.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.full_name} className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">👤</div>
+                  )}
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      {profile.full_name}, {profile.age}
+                    </p>
+                    <p className="text-xs text-slate-600 line-clamp-2">{profile.bio}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenUserProfile?.(profile.user_id)}
+                    className="rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-2.5 py-1.5"
+                  >
+                    Профиль
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openChatWithUser(profile.user_id)}
+                    className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-2.5 py-1.5"
+                  >
+                    Написать
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {currentCandidate && (
+          <section className="lg:col-span-5 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles size={20} className="text-emerald-600" />
+              <h2 className="text-lg font-semibold text-slate-900">Мэтч</h2>
+            </div>
+
             <div className="rounded-2xl border border-slate-200/60 bg-white/60 p-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="w-full md:w-44 h-44 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-100 to-cyan-100 border border-white/70 flex items-center justify-center">
@@ -329,105 +421,63 @@ const ServiceHub = ({ onUnauthorized }) => {
                       disabled={isSubmittingAction}
                       className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2.5 text-sm font-medium transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
                     >
-                      <Heart size={18} /> Позвать
+                      <Heart size={18} /> Лайк
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        <section className="lg:col-span-4 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <HeartHandshake size={18} className="text-emerald-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Взаимные матчи</h2>
-          </div>
-
-          {!mutualMatches.length && (
-            <p className="text-sm text-slate-500">Пока нет взаимных совпадений.</p>
-          )}
-
-          <div className="space-y-2 max-h-80 overflow-auto pr-1">
-            {mutualMatches.map((item) => (
-              <button
-                type="button"
-                key={item.user_id}
-                onClick={() => setSelectedUserId(item.user_id)}
-                className={`w-full text-left rounded-xl px-3 py-2 border transition flex items-center gap-2 ${
-                  item.user_id === selectedUserId
-                    ? 'bg-emerald-500/20 border-emerald-300/60 text-emerald-900'
-                    : 'bg-white/70 border-slate-200/60 text-slate-700 hover:bg-white'
-                }`}
-              >
-                {item.avatar_url ? (
-                  <img src={item.avatar_url} alt={item.name} className="w-8 h-8 rounded-full object-cover" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm">👤</div>
-                )}
-                <div>
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs opacity-70">{new Date(item.matched_at).toLocaleDateString()}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="lg:col-span-4 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <History size={18} className="text-cyan-600" />
-            <h2 className="text-lg font-semibold text-slate-900">История действий</h2>
-          </div>
-
-          {!history.length && <p className="text-sm text-slate-500">История пока пустая.</p>}
-
-          <div className="space-y-2 max-h-72 overflow-auto pr-1">
-            {history.map((item, index) => (
-              <div key={`${item.matched_user_name}-${index}`} className="rounded-xl bg-white/70 border border-slate-200/60 px-3 py-2">
-                <p className="text-sm text-slate-800">
-                  {item.action === 'like' ? 'Лайк' : 'Пропуск'} для {item.matched_user_name}
-                </p>
-                <p className="text-xs text-slate-500 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="lg:col-span-8 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4">
+        <section
+          className={`${currentCandidate ? 'lg:col-span-7' : 'lg:col-span-12'} backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4`}
+        >
           <div className="flex items-center gap-2 mb-3">
             <MessageCircle size={18} className="text-indigo-600" />
             <h2 className="text-lg font-semibold text-slate-900">Чат</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
+            <div className="space-y-2 xl:col-span-2">
               {!mutualMatches.length && (
                 <p className="text-xs text-slate-500">Когда появятся взаимные матчи, здесь будут чаты.</p>
               )}
 
               {mutualMatches.map((item) => (
-                <button
-                  type="button"
+                <div
                   key={`chat-${item.user_id}`}
-                  onClick={() => setSelectedUserId(item.user_id)}
-                  className={`w-full text-left rounded-xl px-3 py-2 border transition flex items-center gap-2 ${
+                  className={`w-full rounded-xl px-3 py-2 border transition flex items-center gap-2 ${
                     item.user_id === selectedUserId
                       ? 'bg-indigo-500/15 border-indigo-300/60 text-indigo-900'
                       : 'bg-white/70 border-slate-200/60 text-slate-700 hover:bg-white'
                   }`}
                 >
-                  {item.avatar_url ? (
-                    <img src={item.avatar_url} alt={item.name} className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm">👤</div>
-                  )}
-                  <span className="text-sm font-medium">{item.name}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => openMiniProfile(item.user_id)}
+                    className="shrink-0"
+                  >
+                    {item.avatar_url ? (
+                      <img src={item.avatar_url} alt={item.name} className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm">👤</div>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openChatWithUser(item.user_id, null)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <span className="text-sm font-medium block truncate">{item.name}</span>
+                    <span className="text-[11px] opacity-70">Открыть чат</span>
+                  </button>
+                </div>
               ))}
             </div>
 
-            <div className="md:col-span-2 rounded-2xl border border-slate-200/60 bg-white/60 p-3 flex flex-col min-h-80">
+            <div className="rounded-2xl border border-slate-200/60 bg-white/60 p-3 flex flex-col min-h-80 xl:col-span-3 min-w-0">
               <div className="flex-1 overflow-auto space-y-2 pr-1">
                 {!selectedUserId && (
                   <p className="text-sm text-slate-500">Выберите пользователя из списка слева.</p>
@@ -448,9 +498,21 @@ const ServiceHub = ({ onUnauthorized }) => {
                     >
                       {isIncoming && (
                         avatarUrl ? (
-                          <img src={avatarUrl} alt="Аватар" className="w-7 h-7 rounded-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => openMiniProfile(selectedUserId)}
+                            className="rounded-full"
+                          >
+                            <img src={avatarUrl} alt="Аватар" className="w-7 h-7 rounded-full object-cover" />
+                          </button>
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[11px]">👤</div>
+                          <button
+                            type="button"
+                            onClick={() => openMiniProfile(selectedUserId)}
+                            className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[11px]"
+                          >
+                            👤
+                          </button>
                         )
                       )}
 
@@ -461,7 +523,7 @@ const ServiceHub = ({ onUnauthorized }) => {
                             : 'bg-emerald-500/20 border border-emerald-300/60 text-emerald-900'
                         }`}
                       >
-                        {message.content}
+                        <span className="break-words">{message.content}</span>
                       </div>
 
                       {!isIncoming && (
@@ -476,18 +538,18 @@ const ServiceHub = ({ onUnauthorized }) => {
                 })}
               </div>
 
-              <form onSubmit={sendMessage} className="mt-3 flex gap-2">
+              <form onSubmit={sendMessage} className="mt-3 flex flex-col sm:flex-row gap-2 min-w-0">
                 <input
                   value={messageText}
                   onChange={(event) => setMessageText(event.target.value)}
-                  className="flex-1 rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full min-w-0 sm:flex-1 rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Введите сообщение"
                   disabled={!selectedUserId || isSendingMessage}
                 />
                 <button
                   type="submit"
                   disabled={!selectedUserId || !messageText.trim() || isSendingMessage}
-                  className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 text-sm disabled:opacity-60"
+                  className="w-full sm:w-auto shrink-0 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 text-sm disabled:opacity-60"
                 >
                   Отправить
                 </button>
@@ -496,6 +558,84 @@ const ServiceHub = ({ onUnauthorized }) => {
           </div>
         </section>
       </div>
+
+      {isMiniProfileOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Мини-профиль</h3>
+              <button
+                type="button"
+                onClick={closeMiniProfile}
+                className="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {isMiniProfileLoading && (
+              <p className="text-sm text-slate-500">Загружаем профиль пользователя...</p>
+            )}
+
+            {!isMiniProfileLoading && miniProfile && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  {miniProfile.avatar_url ? (
+                    <img src={miniProfile.avatar_url} alt={miniProfile.full_name} className="w-14 h-14 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-cyan-100 flex items-center justify-center text-2xl">
+                      👤
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-base font-semibold text-slate-900">{miniProfile.full_name}</p>
+                    <p className="text-sm text-slate-600">Возраст: {miniProfile.age}</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-700 line-clamp-3">{miniProfile.bio}</p>
+
+                <div className="flex flex-wrap gap-2">
+                  {(miniProfile.interests || []).slice(0, 6).map((interest) => (
+                    <span
+                      key={interest}
+                      className="rounded-full bg-emerald-500/20 border border-emerald-300/50 px-2 py-0.5 text-xs text-emerald-700"
+                    >
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openChatWithUser(miniProfile.user_id, 'Чат доступен только после взаимного мэтча.');
+                      closeMiniProfile();
+                    }}
+                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 text-sm font-medium"
+                  >
+                    Открыть чат
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenUserProfile?.(miniProfile.user_id);
+                      closeMiniProfile();
+                    }}
+                    className="flex-1 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-2 text-sm font-medium inline-flex items-center justify-center gap-1"
+                  >
+                    <ExternalLink size={14} />
+                    Страница пользователя
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

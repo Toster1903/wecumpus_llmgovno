@@ -9,7 +9,7 @@ from app.schemas.profile import (
     ProfileAnalysisStatus,
     ProfilePrivatePreferencesOut,
 )
-from app.services import profile_service, message_service
+from app.services import profile_service
 from app.api.deps import get_current_user
 from app.models.user import User
 
@@ -49,12 +49,8 @@ def get_my_private_preferences(
 def get_profile_by_user_id(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ):
-    if user_id != current_user.id:
-        if not message_service.is_mutual_match(db, current_user.id, user_id):
-            raise HTTPException(status_code=403, detail="Profile available only for mutual matches")
-
     profile = profile_service.get_current_profile(db, user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -97,6 +93,25 @@ def match_neighbors(
     max_age: int | None = None,
 ):
     return profile_service.get_matches(
+        db,
+        current_user.id,
+        q=q,
+        interest=interest,
+        min_age=min_age,
+        max_age=max_age,
+    )
+
+
+@router.get("/search", response_model=List[ProfileOut])
+def search_neighbors(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    q: str | None = None,
+    interest: str | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+):
+    return profile_service.search_profiles(
         db,
         current_user.id,
         q=q,

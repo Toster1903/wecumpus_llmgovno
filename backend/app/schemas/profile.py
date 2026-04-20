@@ -8,8 +8,7 @@ class RoommateHabits(BaseModel):
     cleanliness: Optional[str] = None
     guests: Optional[str] = None
     noise: Optional[str] = None
-    smoking: Optional[str] = None
-    pets: Optional[str] = None
+    allergy: Optional[str] = None
     roommate_expectations: Optional[str] = None
 
 

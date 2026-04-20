@@ -16,8 +16,7 @@ _HABIT_KEYS = (
     "cleanliness",
     "guests",
     "noise",
-    "smoking",
-    "pets",
+    "allergy",
 )
 
 
@@ -197,6 +196,43 @@ def get_matches(
     
     if already_actioned_ids:
         query = query.filter(~Profile.user_id.in_(already_actioned_ids))
+
+    if q:
+        query = query.filter(
+            Profile.full_name.ilike(f"%{q}%") | Profile.bio.ilike(f"%{q}%")
+        )
+
+    if interest:
+        query = query.filter(Profile.interests.any(interest))
+
+    if min_age is not None:
+        query = query.filter(Profile.age >= min_age)
+
+    if max_age is not None:
+        query = query.filter(Profile.age <= max_age)
+
+    profiles = query.all()
+    current_profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if not current_profile:
+        return profiles
+
+    return sorted(
+        profiles,
+        key=lambda candidate: _roommate_score(current_profile, candidate),
+        reverse=True,
+    )
+
+
+def search_profiles(
+    db: Session,
+    user_id: int,
+    q: str | None = None,
+    interest: str | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+):
+    """Search all profiles (except current user) with optional filters."""
+    query = db.query(Profile).filter(Profile.user_id != user_id)
 
     if q:
         query = query.filter(

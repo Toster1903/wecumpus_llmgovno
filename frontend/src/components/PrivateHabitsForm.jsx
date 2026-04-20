@@ -4,8 +4,7 @@ const HABIT_FIELDS = {
   cleanliness: '',
   guests: '',
   noise: '',
-  smoking: '',
-  pets: '',
+  allergy: '',
   roommate_expectations: '',
 };
 
@@ -114,31 +113,18 @@ const PrivateHabitsForm = ({
           </select>
         </label>
 
-        <label className="text-sm text-slate-700">
-          Курение
-          <select
-            value={values.smoking}
-            onChange={(event) => updateField('smoking', event.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white/80 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="">Не указано</option>
-            <option value="no">Не курю и не люблю дым</option>
-            <option value="outside">Нормально, если на улице</option>
-            <option value="yes">Курение ок</option>
-          </select>
-        </label>
-
         <label className="text-sm text-slate-700 md:col-span-2">
-          Отношение к питомцам
+          Аллергия
           <select
-            value={values.pets}
-            onChange={(event) => updateField('pets', event.target.value)}
+            value={values.allergy}
+            onChange={(event) => updateField('allergy', event.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white/80 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">Не указано</option>
-            <option value="love">Люблю животных</option>
-            <option value="neutral">Нейтрально</option>
-            <option value="allergy">Нежелательно из-за аллергии</option>
+            <option value="none">Аллергии нет</option>
+            <option value="pets">На животных</option>
+            <option value="dust">На пыль/пыльцу</option>
+            <option value="other">Другое</option>
           </select>
         </label>
       </div>
