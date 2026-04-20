@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Edit2, Sparkles } from 'lucide-react';
 import api from '../api/axios';
+import InterestsInput from '../components/InterestsInput';
+
+const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
 
 const ProfileBuilder = ({ onUnauthorized }) => {
   const [profile, setProfile] = useState(null);
@@ -8,6 +11,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const avatarInputRef = useRef(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -30,10 +34,41 @@ const ProfileBuilder = ({ onUnauthorized }) => {
     fetchProfile();
   }, [onUnauthorized]);
 
-  const interestsText = profile?.interests?.length ? profile.interests.join(', ') : '';
-
   const updateField = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setErrorMessage('');
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Для аватарки нужен файл изображения (JPG, PNG, WEBP).');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      setErrorMessage('Аватарка слишком большая. Максимальный размер: 2 МБ.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfile((prev) => ({
+        ...prev,
+        avatar_url: String(reader.result || ''),
+      }));
+    };
+    reader.onerror = () => {
+      setErrorMessage('Не удалось прочитать файл аватарки. Попробуйте другой файл.');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
@@ -51,6 +86,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
         age: Number(profile.age),
         bio: profile.bio,
         interests: (profile.interests || []).map((item) => item.trim()).filter(Boolean),
+        avatar_url: profile.avatar_url || null,
       };
 
       const response = await api.patch('/profiles/me', payload);
@@ -87,8 +123,23 @@ const ProfileBuilder = ({ onUnauthorized }) => {
     <div className="grid grid-cols-3 gap-6">
       <div className="col-span-1 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 overflow-hidden hover:shadow-lg transition-all">
         <div className="bg-gradient-to-br from-emerald-100 to-cyan-100 h-48 flex items-center justify-center relative border-b border-white/40">
-          <div className="text-6xl">👤</div>
-          <button className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-full shadow-md">
+          {profile.avatar_url ? (
+            <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
+          ) : (
+            <div className="text-6xl">👤</div>
+          )}
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-full shadow-md"
+          >
             <Edit2 size={18} className="text-white" />
           </button>
         </div>
@@ -116,14 +167,27 @@ const ProfileBuilder = ({ onUnauthorized }) => {
           </div>
 
           <div>
-            <p className="text-xs text-slate-600 font-semibold mb-1">ИНТЕРЕСЫ</p>
-            <input
-              value={interestsText}
-              onChange={(event) => updateField('interests', event.target.value.split(','))}
-              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            <InterestsInput
+              interests={profile.interests || []}
+              onChange={(nextInterests) => updateField('interests', nextInterests)}
+              helperText="Добавляйте интересы через Enter или кнопку +"
             />
-            <p className="text-xs text-slate-500 mt-1">Через запятую</p>
           </div>
+
+          {!!profile.avatar_url && (
+            <button
+              type="button"
+              onClick={() => {
+                updateField('avatar_url', null);
+                if (avatarInputRef.current) {
+                  avatarInputRef.current.value = '';
+                }
+              }}
+              className="text-sm text-slate-600 hover:text-slate-800"
+            >
+              Удалить фото
+            </button>
+          )}
         </div>
       </div>
 

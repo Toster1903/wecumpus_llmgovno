@@ -1,15 +1,50 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import api from '../api/axios';
+import InterestsInput from '../components/InterestsInput';
+
+const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
 
 const ProfileSetup = ({ onProfileCreated, onLogout }) => {
   const [fullName, setFullName] = useState('');
   const [age, setAge] = useState('');
   const [bio, setBio] = useState('');
-  const [interests, setInterests] = useState('');
+  const [interests, setInterests] = useState([]);
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState('AI анализирует вашу анкету...');
   const [errorMessage, setErrorMessage] = useState('');
+  const avatarInputRef = useRef(null);
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setErrorMessage('');
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Для аватарки нужен файл изображения (JPG, PNG, WEBP).');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      setErrorMessage('Аватарка слишком большая. Максимальный размер: 2 МБ.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarUrl(String(reader.result || ''));
+    };
+    reader.onerror = () => {
+      setErrorMessage('Не удалось прочитать файл аватарки. Попробуйте другой файл.');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const waitForAnalysis = async () => {
     setIsAnalyzing(true);
@@ -53,16 +88,19 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
     setIsSubmitting(true);
 
     try {
-      const parsedInterests = interests
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
+      const parsedInterests = interests.map((item) => item.trim()).filter(Boolean);
+
+      if (!parsedInterests.length) {
+        setErrorMessage('Добавьте хотя бы один интерес.');
+        return;
+      }
 
       await api.post('/profiles/', {
         full_name: fullName,
         age: Number(age),
         bio,
         interests: parsedInterests,
+        avatar_url: avatarUrl || null,
       });
 
       await waitForAnalysis();
@@ -121,20 +159,59 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="interests">
-              Интересы
-            </label>
-            <input
-              id="interests"
-              type="text"
-              value={interests}
-              onChange={(event) => setInterests(event.target.value)}
-              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="coding, chess, coffee"
-              required
-            />
-            <p className="text-xs text-slate-500 mt-1">Разделяйте интересы запятой.</p>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Аватарка</label>
+            <div className="rounded-2xl backdrop-blur-md bg-white/60 border border-slate-200/70 p-4 flex items-center gap-4">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-100 to-cyan-100 border border-white/70 flex items-center justify-center">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-3xl">👤</span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 text-sm transition"
+                >
+                  Загрузить фото
+                </button>
+
+                {!!avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarUrl('');
+                      if (avatarInputRef.current) {
+                        avatarInputRef.current.value = '';
+                      }
+                    }}
+                    className="block text-sm text-slate-600 hover:text-slate-800"
+                  >
+                    Удалить фото
+                  </button>
+                )}
+
+                <p className="text-xs text-slate-500">JPG/PNG/WEBP, до 2 МБ.</p>
+              </div>
+            </div>
           </div>
+
+          <InterestsInput
+            interests={interests}
+            onChange={setInterests}
+            placeholder="Например, chess"
+            helperText="Нажмите Enter или кнопку +, чтобы добавить интерес"
+          />
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="bio">

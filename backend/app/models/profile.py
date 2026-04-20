@@ -19,6 +19,7 @@ class Profile(Base):
     age = Column(Integer)
     bio = Column(Text) # "Я люблю тишину и программировать по ночам"
     interests = Column(ARRAY(String)) # ["python", "gaming", "rock"]
+    avatar_url = Column(Text, nullable=True)
     
     # 384 — это размерность вектора модели MiniLM
     embedding = Column(Vector(384)) 

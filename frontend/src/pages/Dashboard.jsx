@@ -133,7 +133,20 @@ const Dashboard = ({ onUnauthorized }) => {
           )}
           {!isLoadingProfile && selectedProfile && (
             <div className="space-y-3 text-sm text-slate-700">
-              <p className="text-xl font-semibold text-slate-900">{selectedProfile.full_name}</p>
+              <div className="flex items-center gap-3">
+                {selectedProfile.avatar_url ? (
+                  <img
+                    src={selectedProfile.avatar_url}
+                    alt="Аватар пользователя"
+                    className="w-14 h-14 rounded-xl object-cover border border-white/70"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-cyan-100 flex items-center justify-center border border-white/70">
+                    <span className="text-2xl">👤</span>
+                  </div>
+                )}
+                <p className="text-xl font-semibold text-slate-900">{selectedProfile.full_name}</p>
+              </div>
               <p>Возраст: {selectedProfile.age}</p>
               <p>{selectedProfile.bio}</p>
               <div className="flex flex-wrap gap-2">

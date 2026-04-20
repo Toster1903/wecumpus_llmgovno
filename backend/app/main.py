@@ -14,6 +14,11 @@ with engine.connect() as conn:
     conn.commit()
 
 Base.metadata.create_all(bind=engine)
+
+with engine.connect() as conn:
+    conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
+    conn.commit()
+
 app = FastAPI(title="Wecupmus API")
 
 app.add_middleware(

@@ -211,12 +211,16 @@ const Matches = ({ onUnauthorized }) => {
         <div className="backdrop-blur-xl bg-white/40 rounded-3xl overflow-hidden border border-white/60 shadow-2xl h-full flex flex-col hover:shadow-3xl transition-all">
           {/* Photo */}
           <div className="relative flex-1 bg-gradient-to-br from-emerald-100 to-cyan-100 flex items-center justify-center">
-            <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-              <div className="text-slate-400 text-center">
-                <div className="text-6xl mb-2">👤</div>
-                <p className="text-sm">Фото профиля</p>
+            {current.avatar_url ? (
+              <img src={current.avatar_url} alt="Аватар пользователя" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-blue-100 to-slate-100 flex items-center justify-center">
+                <div className="text-slate-400 text-center">
+                  <div className="text-6xl mb-2">👤</div>
+                  <p className="text-sm">Фото профиля</p>
+                </div>
               </div>
-            </div>
+            )}
             {/* Match Percentage Badge */}
             <div className="absolute top-4 right-4 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full w-16 h-16 flex items-center justify-center shadow-xl backdrop-blur-md border border-white/40">
               <div className="text-center">
