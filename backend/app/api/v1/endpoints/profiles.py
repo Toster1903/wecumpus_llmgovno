@@ -3,10 +3,9 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut, ProfileAnalysisStatus
-from app.services import profile_service
+from app.services import profile_service, message_service
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.models.match import Match
 
 router = APIRouter()
 
@@ -36,17 +35,7 @@ def get_profile_by_user_id(
     current_user: User = Depends(get_current_user),
 ):
     if user_id != current_user.id:
-        liked = db.query(Match.id).filter(
-            Match.user_id == current_user.id,
-            Match.matched_user_id == user_id,
-            Match.action == "like",
-        ).first()
-        liked_back = db.query(Match.id).filter(
-            Match.user_id == user_id,
-            Match.matched_user_id == current_user.id,
-            Match.action == "like",
-        ).first()
-        if not (liked and liked_back):
+        if not message_service.is_mutual_match(db, current_user.id, user_id):
             raise HTTPException(status_code=403, detail="Profile available only for mutual matches")
 
     profile = profile_service.get_current_profile(db, user_id)

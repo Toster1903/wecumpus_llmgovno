@@ -36,9 +36,10 @@ const Matches = ({ onUnauthorized }) => {
   }, [onUnauthorized]);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      fetchMatches();
-    });
+    const loadMatches = async () => {
+      await fetchMatches();
+    };
+    loadMatches();
     api.get('/profiles/me')
       .then((res) => setMyProfile(res.data))
       .catch((err) => {
