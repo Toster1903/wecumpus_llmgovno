@@ -33,9 +33,6 @@ def send_message(
     if payload.receiver_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot send message to yourself")
 
-    if not payload.content.strip():
-        raise HTTPException(status_code=400, detail="Message content is required")
-
     if not message_service.is_mutual_match(db, current_user.id, payload.receiver_id):
         raise HTTPException(status_code=403, detail="Chat available only for mutual matches")
 

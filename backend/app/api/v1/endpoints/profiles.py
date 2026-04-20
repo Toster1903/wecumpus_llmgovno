@@ -6,6 +6,7 @@ from app.schemas.profile import ProfileCreate, ProfileUpdate, ProfileOut, Profil
 from app.services import profile_service
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.models.match import Match
 
 router = APIRouter()
 
@@ -34,6 +35,20 @@ def get_profile_by_user_id(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if user_id != current_user.id:
+        liked = db.query(Match.id).filter(
+            Match.user_id == current_user.id,
+            Match.matched_user_id == user_id,
+            Match.action == "like",
+        ).first()
+        liked_back = db.query(Match.id).filter(
+            Match.user_id == user_id,
+            Match.matched_user_id == current_user.id,
+            Match.action == "like",
+        ).first()
+        if not (liked and liked_back):
+            raise HTTPException(status_code=403, detail="Profile available only for mutual matches")
+
     profile = profile_service.get_current_profile(db, user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")

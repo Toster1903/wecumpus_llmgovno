@@ -1,10 +1,18 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MessageCreate(BaseModel):
     receiver_id: int
-    content: str = Field(min_length=1, max_length=2000)
+    content: str = Field(max_length=2000)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Message content is required")
+        return stripped
 
 
 class MessageOut(BaseModel):

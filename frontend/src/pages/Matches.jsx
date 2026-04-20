@@ -36,8 +36,9 @@ const Matches = ({ onUnauthorized }) => {
   }, [onUnauthorized]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchMatches();
+    Promise.resolve().then(() => {
+      fetchMatches();
+    });
     api.get('/profiles/me')
       .then((res) => setMyProfile(res.data))
       .catch((err) => {

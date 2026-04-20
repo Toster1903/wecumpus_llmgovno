@@ -13,10 +13,10 @@ const Chat = ({ onUnauthorized }) => {
     const response = await api.get('/matches/mutual');
     const items = response.data?.mutual_matches || [];
     setMutualMatches(items);
-    if (items.length && !selectedUserId) {
-      setSelectedUserId(items[0].user_id);
+    if (items.length) {
+      setSelectedUserId((prev) => prev ?? items[0].user_id);
     }
-  }, [selectedUserId]);
+  }, []);
 
   const fetchConversation = useCallback(async (userId) => {
     if (!userId) {
