@@ -102,7 +102,7 @@ function App() {
       <nav className="backdrop-blur-xl bg-white/40 border-b border-white/30 px-6 py-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">🦋 Wecupmus</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">🦋 Wecampus</h1>
             <div className="flex gap-4">
               <button
                 onClick={() => setCurrentPage('service')}
