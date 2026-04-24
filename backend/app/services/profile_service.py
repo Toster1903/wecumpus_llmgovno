@@ -1,3 +1,4 @@
+import logging
 import threading
 from sqlalchemy.orm import Session
 from typing import Any, Mapping, Sequence, cast
@@ -18,6 +19,7 @@ _HABIT_KEYS = (
     "noise",
     "allergy",
 )
+logger = logging.getLogger(__name__)
 
 
 def _set_analysis_state(user_id: int, state: str):
@@ -40,6 +42,7 @@ def _run_embedding_job(user_id: int):
         _set_analysis_state(user_id, "ready")
     except Exception:
         _set_analysis_state(user_id, "failed")
+        logger.exception("Failed to build profile embedding", extra={"user_id": user_id})
     finally:
         db.close()
 

@@ -10,7 +10,10 @@ router = APIRouter()
 
 @router.post("/", response_model=UserOut)
 def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    return user_service.create_new_user(db, user_in)
+    try:
+        return user_service.create_new_user(db, user_in)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 @router.get("/me", response_model=UserOut)
 def get_current_user_info(current_user: User = Depends(get_current_user)):

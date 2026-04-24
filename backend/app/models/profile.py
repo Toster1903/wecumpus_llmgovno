@@ -1,14 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, ARRAY, Boolean, JSON
 from sqlalchemy.orm import relationship
-from sqlalchemy.types import UserDefinedType
+from pgvector.sqlalchemy import Vector
 from app.db.session import Base
-
-class Vector(UserDefinedType):
-    def __init__(self, dimensions):
-        self.dimensions = dimensions
-
-    def get_col_spec(self, **kw):
-        return f"vector({self.dimensions})"
 
 class Profile(Base):
     __tablename__ = "profiles"

@@ -1,10 +1,12 @@
+import logging
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from app.api.v1.endpoints import users, profiles, auth, matches, messages, clubs
 from app.db.session import engine, Base
-from sqlalchemy import text
 from app.models.user import User
 from app.models.profile import Profile
 from app.models.match import Match
@@ -13,20 +15,24 @@ from app.models.club import Club
 from app.models.club_member import ClubMember
 from app.models.club_invite import ClubInvite
 
-# Создаем расширение vector перед созданием таблиц
-with engine.connect() as conn:
-    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-    conn.commit()
+logger = logging.getLogger(__name__)
 
-Base.metadata.create_all(bind=engine)
 
-with engine.connect() as conn:
-    conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
-    conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS private_habits JSONB;"))
-    conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS club_id INTEGER;"))
-    conn.execute(text("ALTER TABLE messages ALTER COLUMN receiver_id DROP NOT NULL;"))
-    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_club_id ON messages (club_id);"))
-    conn.commit()
+def init_database() -> None:
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+
+        Base.metadata.create_all(bind=engine)
+
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
+            conn.execute(text("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS private_habits JSONB;"))
+            conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS club_id INTEGER;"))
+            conn.execute(text("ALTER TABLE messages ALTER COLUMN receiver_id DROP NOT NULL;"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_club_id ON messages (club_id);"))
+    except SQLAlchemyError:
+        logger.exception("Database initialization failed")
 
 app = FastAPI(title="Wecupmus API")
 
@@ -41,6 +47,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    init_database()
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
