@@ -119,144 +119,163 @@ const ProfileSetup = ({ onProfileCreated, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl backdrop-blur-xl bg-white/50 border border-white/70 rounded-3xl shadow-2xl p-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-          Создайте профиль
-        </h1>
-        <p className="text-slate-600 mb-6">Заполните анкету, чтобы начать подбор соседей.</p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+    <div className="elegant-shell">
+      <div className="elegant-content">
+        <div className="elegant-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.6rem' }}>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="fullName">
-                Имя
-              </label>
-              <input
-                id="fullName"
-                type="text"
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Например, Maya Chen"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="age">
-                Возраст
-              </label>
-              <input
-                id="age"
-                type="number"
-                min="16"
-                max="100"
-                value={age}
-                onChange={(event) => setAge(event.target.value)}
-                className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="20"
-                required
-              />
+              <div className="label-mono" style={{ marginBottom: '0.4rem', color: 'var(--elegant-text-muted)' }}>
+                Step 1 · Profile
+              </div>
+              <h1 className="elegant-title">Создайте ваш профиль</h1>
+              <p className="elegant-sub" style={{ marginBottom: 0 }}>
+                Заполните анкету — на её основе AI подберёт совместимых соседей и партнёров по интересам.
+              </p>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Аватарка</label>
-            <div className="rounded-2xl backdrop-blur-md bg-white/60 border border-slate-200/70 p-4 flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-100 to-cyan-100 border border-white/70 flex items-center justify-center">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-3xl">👤</span>
-                )}
-              </div>
-
-              <div className="space-y-2">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label className="elegant-field-label" htmlFor="fullName">Имя</label>
                 <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  className="elegant-input"
+                  placeholder="Например, Maya Chen"
+                  required
                 />
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 text-sm transition"
-                >
-                  Загрузить фото
-                </button>
-
-                {!!avatarUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAvatarUrl('');
-                      if (avatarInputRef.current) {
-                        avatarInputRef.current.value = '';
-                      }
-                    }}
-                    className="block text-sm text-slate-600 hover:text-slate-800"
-                  >
-                    Удалить фото
-                  </button>
-                )}
-
-                <p className="text-xs text-slate-500">JPG/PNG/WEBP, до 2 МБ.</p>
+              <div>
+                <label className="elegant-field-label" htmlFor="age">Возраст</label>
+                <input
+                  id="age"
+                  type="number"
+                  min="16"
+                  max="100"
+                  value={age}
+                  onChange={(event) => setAge(event.target.value)}
+                  className="elegant-input"
+                  placeholder="20"
+                  required
+                />
               </div>
             </div>
-          </div>
 
-          <InterestsInput
-            interests={interests}
-            onChange={setInterests}
-            placeholder="Например, chess"
-            helperText="Нажмите Enter или кнопку +, чтобы добавить интерес"
-          />
+            <div>
+              <label className="elegant-field-label">Аватарка</label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.1rem',
+                  background: 'var(--elegant-bg)',
+                  border: '1px solid var(--elegant-border)',
+                  borderRadius: '14px',
+                  padding: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    background: 'var(--elegant-accent-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: "'Playfair Display', serif",
+                    fontSize: '1.6rem',
+                    color: 'var(--elegant-primary)',
+                    flexShrink: 0,
+                  }}
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Аватар" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    fullName ? fullName.charAt(0).toUpperCase() : '·'
+                  )}
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="bio">
-              О себе
-            </label>
-            <textarea
-              id="bio"
-              value={bio}
-              onChange={(event) => setBio(event.target.value)}
-              rows="4"
-              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Кто вы и какого соседа ищете"
-              required
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    style={{ display: 'none' }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="btn-elegant"
+                      style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
+                    >
+                      Загрузить фото
+                    </button>
+                    {!!avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAvatarUrl('');
+                          if (avatarInputRef.current) avatarInputRef.current.value = '';
+                        }}
+                        className="btn-elegant-ghost"
+                        style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--elegant-text-faint)' }}>JPG · PNG · WEBP, до 2 МБ.</p>
+                </div>
+              </div>
+            </div>
+
+            <InterestsInput
+              interests={interests}
+              onChange={setInterests}
+              placeholder="Например, chess"
+              helperText="Нажмите Enter или кнопку +, чтобы добавить интерес"
             />
-          </div>
 
-          <PrivateHabitsForm
-            habits={privateHabits}
-            onChange={setPrivateHabits}
-            title="Приватно для поиска соседей по комнате"
-          />
-
-          {errorMessage && (
-            <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-2 text-sm text-red-700">
-              {errorMessage}
+            <div>
+              <label className="elegant-field-label" htmlFor="bio">О себе</label>
+              <textarea
+                id="bio"
+                value={bio}
+                onChange={(event) => setBio(event.target.value)}
+                rows="4"
+                className="elegant-input"
+                placeholder="Кто вы и какого соседа ищете"
+                required
+              />
             </div>
-          )}
 
-          {isAnalyzing && (
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-300/50 px-4 py-3 text-sm text-emerald-700">
-              {analysisMessage}
+            <PrivateHabitsForm
+              habits={privateHabits}
+              onChange={setPrivateHabits}
+              title="Приватно для поиска соседей по комнате"
+            />
+
+            {errorMessage && <div className="elegant-msg-error">{errorMessage}</div>}
+            {isAnalyzing && <div className="elegant-msg-success">{analysisMessage}</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+              <button type="button" className="btn-elegant-ghost" onClick={onLogout}>
+                Выйти
+              </button>
+              <button type="submit" className="btn-elegant" disabled={isSubmitting || isAnalyzing}>
+                {isSubmitting ? 'Сохраняем...' : isAnalyzing ? 'AI анализирует...' : 'Создать профиль'}
+              </button>
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting || isAnalyzing}
-            className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-2.5 font-medium transition shadow-lg disabled:opacity-70"
-          >
-            {isSubmitting ? 'Сохраняем...' : isAnalyzing ? 'AI анализирует...' : 'Создать профиль'}
-          </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Edit2, Sparkles } from 'lucide-react';
 import api from '../api/axios';
 import InterestsInput from '../components/InterestsInput';
 import PrivateHabitsForm, { createEmptyHabits, sanitizeHabits } from '../components/PrivateHabitsForm';
@@ -50,10 +49,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
 
   const handleAvatarChange = (event) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
+    if (!file) return;
     setErrorMessage('');
 
     if (!file.type.startsWith('image/')) {
@@ -61,7 +57,6 @@ const ProfileBuilder = ({ onUnauthorized }) => {
       event.target.value = '';
       return;
     }
-
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
       setErrorMessage('Аватарка слишком большая. Максимальный размер: 2 МБ.');
       event.target.value = '';
@@ -70,10 +65,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setProfile((prev) => ({
-        ...prev,
-        avatar_url: String(reader.result || ''),
-      }));
+      setProfile((prev) => ({ ...prev, avatar_url: String(reader.result || '') }));
     };
     reader.onerror = () => {
       setErrorMessage('Не удалось прочитать файл аватарки. Попробуйте другой файл.');
@@ -82,10 +74,7 @@ const ProfileBuilder = ({ onUnauthorized }) => {
   };
 
   const handleSave = async () => {
-    if (!profile) {
-      return;
-    }
-
+    if (!profile) return;
     setIsSaving(true);
     setErrorMessage('');
     setSuccessMessage('');
@@ -116,130 +105,160 @@ const ProfileBuilder = ({ onUnauthorized }) => {
 
   if (isLoading) {
     return (
-      <div className="backdrop-blur-xl bg-white/50 rounded-3xl border border-white/70 p-8 text-slate-700">
-        Загружаем профиль...
+      <div className="elegant-shell">
+        <div className="elegant-content">
+          <div className="elegant-card">
+            <span className="spin" /> Загружаем профиль...
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="backdrop-blur-xl bg-red-500/10 rounded-3xl border border-red-300/50 p-8 text-red-700">
-        {errorMessage || 'Профиль не найден.'}
+      <div className="elegant-shell">
+        <div className="elegant-content">
+          <div className="elegant-card">
+            <div className="elegant-msg-error">{errorMessage || 'Профиль не найден.'}</div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  const resolvedAvatar = profile.avatar_url
+    ? profile.avatar_url.startsWith('http') || profile.avatar_url.startsWith('data:')
+      ? profile.avatar_url
+      : `http://localhost:8000${profile.avatar_url}`
+    : null;
+
   return (
-    <div className="grid grid-cols-3 gap-6">
-      <div className="col-span-1 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 overflow-hidden hover:shadow-lg transition-all">
-        <div className="bg-gradient-to-br from-emerald-100 to-cyan-100 h-48 flex items-center justify-center relative border-b border-white/40">
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
-          ) : (
-            <div className="text-6xl">👤</div>
-          )}
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => avatarInputRef.current?.click()}
-            className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-full shadow-md"
-          >
-            <Edit2 size={18} className="text-white" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <p className="text-xs text-slate-600 font-semibold mb-1">ИМЯ</p>
-            <input
-              value={profile.full_name}
-              onChange={(event) => updateField('full_name', event.target.value)}
-              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          <div>
-            <p className="text-xs text-slate-600 font-semibold mb-1">ВОЗРАСТ</p>
-            <input
-              type="number"
-              min="16"
-              max="100"
-              value={profile.age}
-              onChange={(event) => updateField('age', event.target.value)}
-              className="w-full rounded-xl backdrop-blur-md bg-white/60 border border-slate-200/70 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          <div>
-            <InterestsInput
-              interests={profile.interests || []}
-              onChange={(nextInterests) => updateField('interests', nextInterests)}
-              helperText="Добавляйте интересы через Enter или кнопку +"
-            />
-          </div>
-
-          {!!profile.avatar_url && (
-            <button
-              type="button"
-              onClick={() => {
-                updateField('avatar_url', null);
-                if (avatarInputRef.current) {
-                  avatarInputRef.current.value = '';
-                }
+    <div className="elegant-shell">
+      <div className="elegant-content" style={{ maxWidth: 1080 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem' }} className="profile-grid">
+          <div className="elegant-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div
+              style={{
+                height: 220,
+                background: 'linear-gradient(135deg, var(--elegant-accent-light) 0%, #fffaf3 100%)',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-              className="text-sm text-slate-600 hover:text-slate-800"
             >
-              Удалить фото
-            </button>
-          )}
-        </div>
-      </div>
+              {resolvedAvatar ? (
+                <img src={resolvedAvatar} alt="Аватар" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '5rem', color: 'var(--elegant-primary)' }}>
+                  {(profile.full_name || '·').charAt(0).toUpperCase()}
+                </div>
+              )}
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Изменить фото"
+                style={{
+                  position: 'absolute',
+                  top: '0.7rem',
+                  right: '0.7rem',
+                  background: 'var(--elegant-primary)',
+                  color: 'white',
+                  border: 'none',
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '0.95rem',
+                  boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                }}
+              >
+                ✎
+              </button>
+            </div>
 
-      <div className="col-span-2 backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6 space-y-4 hover:shadow-lg transition-all">
-        <div className="flex items-center gap-2">
-          <Sparkles className="text-amber-500" size={24} />
-          <h2 className="text-xl font-bold text-slate-900">О себе</h2>
-        </div>
+            <div style={{ padding: '1.4rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div>
+                <label className="elegant-field-label">Имя</label>
+                <input
+                  value={profile.full_name || ''}
+                  onChange={(event) => updateField('full_name', event.target.value)}
+                  className="elegant-input"
+                />
+              </div>
 
-        <textarea
-          rows="8"
-          value={profile.bio}
-          onChange={(event) => updateField('bio', event.target.value)}
-          className="w-full backdrop-blur-md bg-white/60 border border-slate-300/50 rounded-xl p-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
+              <div>
+                <label className="elegant-field-label">Возраст</label>
+                <input
+                  type="number"
+                  min="16"
+                  max="100"
+                  value={profile.age ?? ''}
+                  onChange={(event) => updateField('age', event.target.value)}
+                  className="elegant-input"
+                />
+              </div>
 
-        <PrivateHabitsForm
-          habits={privateHabits}
-          onChange={setPrivateHabits}
-          title="Приватно для поиска соседей"
-        />
+              <InterestsInput
+                interests={profile.interests || []}
+                onChange={(nextInterests) => updateField('interests', nextInterests)}
+                helperText="Enter или + для добавления"
+              />
 
-        {errorMessage && (
-          <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-2 text-sm text-red-700">
-            {errorMessage}
+              {!!profile.avatar_url && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateField('avatar_url', null);
+                    if (avatarInputRef.current) avatarInputRef.current.value = '';
+                  }}
+                  className="btn-elegant-ghost"
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  Удалить фото
+                </button>
+              )}
+            </div>
           </div>
-        )}
 
-        {successMessage && (
-          <div className="rounded-xl bg-emerald-500/10 border border-emerald-300/50 px-4 py-2 text-sm text-emerald-700">
-            {successMessage}
+          <div className="elegant-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="label-mono" style={{ color: 'var(--elegant-text-muted)' }}>About</div>
+            <h2 className="elegant-title" style={{ fontSize: '1.8rem', marginBottom: 0 }}>
+              О себе
+            </h2>
+
+            <textarea
+              rows="8"
+              value={profile.bio || ''}
+              onChange={(event) => updateField('bio', event.target.value)}
+              className="elegant-input"
+              placeholder="Расскажите о себе"
+            />
+
+            <PrivateHabitsForm
+              habits={privateHabits}
+              onChange={setPrivateHabits}
+              title="Приватно для поиска соседей"
+            />
+
+            {errorMessage && <div className="elegant-msg-error">{errorMessage}</div>}
+            {successMessage && <div className="elegant-msg-success">{successMessage}</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={handleSave} disabled={isSaving} className="btn-elegant">
+                {isSaving ? 'Сохраняем...' : 'Сохранить'}
+              </button>
+            </div>
           </div>
-        )}
-
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-md disabled:opacity-70"
-        >
-          {isSaving ? 'Сохраняем...' : 'Сохранить'}
-        </button>
+        </div>
       </div>
     </div>
   );

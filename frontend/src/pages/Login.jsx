@@ -56,21 +56,43 @@ const Login = ({ onLoginSuccess }) => {
     setSuccessMessage('');
   };
 
+  const isLogin = mode === 'login';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md backdrop-blur-xl bg-white/40 rounded-3xl shadow-2xl border border-white/60 p-8 hover:shadow-3xl transition-all">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-          {mode === 'login' ? '🦋 Wecupmus' : '🦋 Wecupmus'}
+    <div className="premium-shell">
+      <span className="premium-orb a" />
+      <span className="premium-orb b" />
+      <span className="premium-orb c" />
+
+      <div className="premium-card">
+        <div className="premium-eyebrow">Wecampus · Sunset</div>
+        <h1 className="premium-title">
+          {isLogin ? (
+            <>Welcome <em>back.</em></>
+          ) : (
+            <>Hello, <em>стажёр.</em></>
+          )}
         </h1>
-        <p className="text-slate-600 mb-6">
-          {mode === 'login'
-            ? 'Авторизуйтесь, чтобы смотреть подбор соседей.'
-            : 'Создайте аккаунт и сразу войдите в систему.'}
+        <p className="premium-sub">
+          {isLogin
+            ? 'Войди — и я подберу соседей, попутчиков и события на сегодня.'
+            : 'Создай аккаунт за минуту — анкету заполним сразу после.'}
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="email">
+            <label
+              htmlFor="email"
+              style={{
+                display: 'block',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.7rem',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: 'var(--premium-text-muted)',
+                marginBottom: '0.4rem',
+              }}
+            >
               Email
             </label>
             <input
@@ -78,63 +100,57 @@ const Login = ({ onLoginSuccess }) => {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-xl backdrop-blur-md bg-white/50 border border-slate-200/60 px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="premium-input"
               placeholder="you@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="password">
-              Пароль
+            <label
+              htmlFor="password"
+              style={{
+                display: 'block',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.7rem',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: 'var(--premium-text-muted)',
+                marginBottom: '0.4rem',
+              }}
+            >
+              Password
             </label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-xl backdrop-blur-md bg-white/50 border border-slate-200/60 px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="premium-input"
               placeholder="Ваш пароль"
               required
             />
           </div>
 
-          {errorMessage && (
-            <div className="rounded-xl backdrop-blur-md bg-red-500/10 border border-red-300/50 px-3 py-2 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          )}
+          {errorMessage && <div className="premium-msg-error">{errorMessage}</div>}
+          {successMessage && <div className="premium-msg-success">{successMessage}</div>}
 
-          {successMessage && (
-            <div className="rounded-xl backdrop-blur-md bg-emerald-500/10 border border-emerald-300/50 px-3 py-2 text-sm text-emerald-700">
-              {successMessage}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-2.5 font-medium transition shadow-lg disabled:opacity-70"
-          >
+          <button type="submit" className="btn-premium" disabled={isSubmitting} style={{ marginTop: '0.4rem' }}>
             {isSubmitting
-              ? mode === 'login'
+              ? isLogin
                 ? 'Входим...'
                 : 'Регистрируем...'
-              : mode === 'login'
+              : isLogin
                 ? 'Войти'
                 : 'Зарегистрироваться'}
           </button>
         </form>
 
-        <button
-          type="button"
-          onClick={switchMode}
-          className="mt-5 w-full text-sm text-slate-600 hover:text-slate-900 transition"
-        >
-          {mode === 'login'
-            ? 'Нет аккаунта? Зарегистрироваться'
-            : 'Уже есть аккаунт? Войти'}
-        </button>
+        <div style={{ textAlign: 'center', marginTop: '1.4rem' }}>
+          <button type="button" onClick={switchMode} className="premium-link">
+            {isLogin ? 'Нет аккаунта · Зарегистрироваться' : 'Уже есть аккаунт · Войти'}
+          </button>
+        </div>
       </div>
     </div>
   );

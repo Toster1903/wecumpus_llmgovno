@@ -4,14 +4,34 @@ import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
 import ServiceHub from './pages/ServiceHub';
 import UserProfilePage from './pages/UserProfilePage';
+import Dashboard from './pages/Dashboard';
 import api from './api/axios';
 import { clearAuthToken, getAuthToken, setAuthToken } from './utils/authToken';
+
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Home' },
+  { id: 'service',   label: 'Match' },
+  { id: 'chat',      label: 'Inbox' },
+  { id: 'profile',   label: 'Profile' },
+];
+
+const APP_TO_PAGE = {
+  matches: 'service',
+  chat: 'service',
+  clubs: 'service',
+  profile: 'profile',
+  events: 'service',
+  rides: 'service',
+  plan: 'service',
+  market: 'service',
+};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
   const [isCheckingProfile, setIsCheckingProfile] = useState(Boolean(getAuthToken()));
   const [hasProfile, setHasProfile] = useState(false);
-  const [currentPage, setCurrentPage] = useState('service');
+  const [me, setMe] = useState(null);
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedUserProfileId, setSelectedUserProfileId] = useState(null);
   const [pendingChatUserId, setPendingChatUserId] = useState(null);
 
@@ -20,13 +40,15 @@ function App() {
       if (!isAuthenticated) {
         setIsCheckingProfile(false);
         setHasProfile(false);
+        setMe(null);
         return;
       }
 
       setIsCheckingProfile(true);
       try {
-        await api.get('/profiles/me');
+        const r = await api.get('/profiles/me');
         setHasProfile(true);
+        setMe(r.data);
       } catch (error) {
         if (error?.response?.status === 404) {
           setHasProfile(false);
@@ -48,16 +70,17 @@ function App() {
     setIsAuthenticated(true);
     setSelectedUserProfileId(null);
     setPendingChatUserId(null);
-    setCurrentPage('service');
+    setCurrentPage('dashboard');
   };
 
   const handleLogout = () => {
     clearAuthToken();
     setIsAuthenticated(false);
     setHasProfile(false);
+    setMe(null);
     setSelectedUserProfileId(null);
     setPendingChatUserId(null);
-    setCurrentPage('service');
+    setCurrentPage('dashboard');
   };
 
   const handleOpenUserProfile = (userId) => {
@@ -70,15 +93,20 @@ function App() {
     setCurrentPage('service');
   };
 
+  const handleAppNavigate = (appId) => {
+    const page = APP_TO_PAGE[appId] || 'service';
+    setCurrentPage(page);
+  };
+
   if (!isAuthenticated) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   if (isCheckingProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-slate-900 flex items-center justify-center">
-        <div className="backdrop-blur-xl bg-white/50 border border-white/70 rounded-3xl px-8 py-6 text-slate-700">
-          Проверяем профиль...
+      <div className="page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card-cream" style={{ padding: '1.5rem 2rem' }}>
+          <span className="spin" /> Проверяем профиль...
         </div>
       </div>
     );
@@ -89,55 +117,58 @@ function App() {
       <ProfileSetup
         onProfileCreated={() => {
           setHasProfile(true);
-          setCurrentPage('service');
+          setCurrentPage('dashboard');
         }}
         onLogout={handleLogout}
       />
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-slate-900">
-      {/* Navigation */}
-      <nav className="backdrop-blur-xl bg-white/40 border-b border-white/30 px-6 py-4 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">🦋 Wecampus</h1>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setCurrentPage('service')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  currentPage === 'service'
-                    ? 'bg-emerald-500 text-white shadow-lg'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-                }`}
-              >
-                Сервис
-              </button>
-              <button
-                onClick={() => setCurrentPage('profile')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  currentPage === 'profile'
-                    ? 'bg-emerald-500 text-white shadow-lg'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-                }`}
-              >
-                Профиль
-              </button>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-lg backdrop-blur-md bg-red-500/30 text-red-700 hover:bg-red-500/50 transition border border-red-300/50"
-          >
-            Выйти
-          </button>
-        </div>
-      </nav>
+  const initials = (me?.full_name || '·')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto p-6">
-        {currentPage === 'service' && (
+  if (currentPage === 'profile') {
+    return (
+      <div>
+        <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} initials={initials} />
+        <ProfileBuilder onUnauthorized={handleLogout} />
+      </div>
+    );
+  }
+
+  if (currentPage === 'userProfile') {
+    return (
+      <div>
+        <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} initials={initials} />
+        <UserProfilePage
+          userId={selectedUserProfileId}
+          onBack={() => setCurrentPage('service')}
+          onUnauthorized={handleLogout}
+          onWrite={handleStartChatFromProfile}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-shell">
+      <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} initials={initials} />
+
+      <div className="page-content">
+        {currentPage === 'dashboard' && (
+          <Dashboard
+            onUnauthorized={handleLogout}
+            onNavigate={handleAppNavigate}
+            onOpenUserProfile={handleOpenUserProfile}
+            onSayHi={handleStartChatFromProfile}
+          />
+        )}
+        {(currentPage === 'service' || currentPage === 'chat') && (
           <ServiceHub
             onUnauthorized={handleLogout}
             onOpenUserProfile={handleOpenUserProfile}
@@ -145,18 +176,51 @@ function App() {
             onInitialChatHandled={() => setPendingChatUserId(null)}
           />
         )}
-        {currentPage === 'profile' && <ProfileBuilder onUnauthorized={handleLogout} />}
-        {currentPage === 'userProfile' && (
-          <UserProfilePage
-            userId={selectedUserProfileId}
-            onBack={() => setCurrentPage('service')}
-            onUnauthorized={handleLogout}
-            onWrite={handleStartChatFromProfile}
-          />
-        )}
       </div>
     </div>
   );
 }
+
+const Nav = ({ currentPage, setCurrentPage, onLogout, initials }) => (
+  <nav className="app-nav">
+    <div className="app-nav-inner">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <div className="app-nav-logo" onClick={() => setCurrentPage('dashboard')}>
+          Wecampus
+        </div>
+        <div className="app-nav-links">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`app-nav-link ${currentPage === item.id ? 'is-active' : ''}`}
+              onClick={() => setCurrentPage(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+        <div className="app-nav-user">
+          <span className="app-nav-dot" />
+          online
+        </div>
+        <div
+          className="avatar-circle avatar-32"
+          title="Профиль"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setCurrentPage('profile')}
+        >
+          {initials}
+        </div>
+        <button type="button" className="app-nav-logout" onClick={onLogout}>
+          Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+);
 
 export default App;

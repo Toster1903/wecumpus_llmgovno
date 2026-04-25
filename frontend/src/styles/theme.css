@@ -1,0 +1,268 @@
+/* =====================================================================
+   Wecampus Design System
+   Tokens for 4 design directions (01 AI / 02 Premium / 03 Elegant / 04)
+   Default theme = 01 (AI Dashboard – cream).
+   ===================================================================== */
+
+:root {
+  /* === 01 AI (cream) – primary palette === */
+  --cream: #f0ebe0;
+  --cream-light: #f7f3ea;
+  --cream-deep: #e8e1d2;
+  --paper: #fffdf7;
+
+  --ink: #1a1a1a;
+  --ink-soft: #3a3a36;
+  --ink-muted: #6e685c;
+  --ink-faint: #a09a8c;
+
+  --terracotta: #c97b63;
+  --sage: #b8c5a8;
+  --rose: #d4a59a;
+  --butter: #e8d49a;
+  --sky: #a8c0d4;
+
+  --line: rgba(26, 26, 26, 0.12);
+  --line-soft: rgba(26, 26, 26, 0.06);
+
+  /* === 02 Premium (sunset) – used for Login splash === */
+  --premium-bg: linear-gradient(135deg, #1a0a0a 0%, #3d1f1f 50%, #2d0a1f 100%);
+  --premium-accent1: #ff6b35;
+  --premium-accent2: #f7931e;
+  --premium-accent3: #ff006e;
+  --premium-text: #ffe5d0;
+  --premium-text-muted: #b8956f;
+  --premium-glow: rgba(255, 107, 53, 0.25);
+
+  /* === 03 Elegant (warm) – used for profile pages === */
+  --elegant-bg: #faf7f2;
+  --elegant-card: #ffffff;
+  --elegant-primary: #d4956e;
+  --elegant-secondary: #b8a3d4;
+  --elegant-tertiary: #a8d5ba;
+  --elegant-text: #2d2415;
+  --elegant-text-muted: #6b5d4f;
+  --elegant-text-faint: #999999;
+  --elegant-accent-light: #ffe8d6;
+  --elegant-border: #e5ddd5;
+
+  /* === 04 Exploration (cream variant) – used for ServiceHub === */
+  --explore-bg: linear-gradient(135deg, #fef5f0 0%, #fff9f5 50%, #faf5f8 100%);
+  --explore-secondary: rgba(255, 245, 240, 0.7);
+  --explore-accent1: #f4a09f;
+  --explore-accent2: #f9d4d0;
+  --explore-text: #5a3a3a;
+  --explore-text-muted: #7a5a5a;
+  --explore-card-glow: rgba(244, 160, 159, 0.12);
+  --explore-button: linear-gradient(135deg, #f4a09f 0%, #f9d4d0 100%);
+
+  /* Shape */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  /* Shadows */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 60px -30px rgba(60, 50, 30, 0.22),
+    0 8px 20px -10px rgba(60, 50, 30, 0.12);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ---------------------------------------------------------------------
+   Global resets / base font – AI dashboard direction
+   --------------------------------------------------------------------- */
+html, body, #root {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+}
+
+body { min-height: 100vh; }
+
+.font-display { font-family: 'Fraunces', Georgia, serif; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+.font-elegant { font-family: 'Playfair Display', Georgia, serif; }
+
+/* Mono label – appears all over the system */
+.label-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+/* Buttons (AI direction) */
+.btn-ink {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0.95rem 1.8rem;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Fraunces', serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.btn-ink:hover { background: var(--ink-soft); transform: translateY(-1px); }
+.btn-ink:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  padding: 0.7rem 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-ghost:hover { border-color: var(--ink); }
+
+/* Inputs (cream) */
+.input-cream {
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: var(--ink);
+  transition: border-color 0.2s ease;
+}
+.input-cream::placeholder { color: var(--ink-faint); }
+.input-cream:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+textarea.input-cream { resize: vertical; min-height: 96px; }
+
+/* Cards */
+.card-cream {
+  background: var(--cream-light);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+.card-paper {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+/* Page container */
+.page-shell {
+  min-height: 100vh;
+  background: var(--cream);
+}
+.page-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem;
+}
+@media (max-width: 720px) {
+  .page-content { padding: 1.5rem 1rem 3rem; }
+}
+
+/* Top navigation (AI dashboard direction) */
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 1.1rem 2rem;
+  background: rgba(240, 235, 224, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-nav-inner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+.app-nav-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  cursor: pointer;
+}
+.app-nav-links {
+  display: flex;
+  gap: 1.6rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.app-nav-link {
+  color: var(--ink-muted);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.app-nav-link:hover,
+.app-nav-link.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.app-nav-user {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+.app-nav-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--sage);
+  animation: blink 2s ease infinite;
+}
+
+/* Logout button in nav */
+.app-nav-logout {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.app-nav-logout:hover {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
+
+@media (max-width: 720px) {
+  .app-nav-links { display: none; }
+}

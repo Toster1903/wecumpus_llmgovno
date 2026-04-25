@@ -1,0 +1,55 @@
+/* =====================================================================
+   Animations — shared keyframes
+   ===================================================================== */
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+@keyframes feedPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(201, 123, 99, 0.18); }
+  50%      { box-shadow: 0 0 0 8px rgba(201, 123, 99, 0); }
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes feedRowIn {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(30px, -50px) scale(1.05); }
+  66%      { transform: translate(-20px, 30px) scale(0.95); }
+}
+
+@keyframes gradientShift {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.95; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.animate-page-in { animation: pageFadeIn 0.8s ease-out both; }
+.animate-blink   { animation: blink 2s ease infinite; }
+
+/* Spin (loaders) */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid var(--line);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}

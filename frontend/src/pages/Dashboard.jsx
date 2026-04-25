@@ -1,169 +1,84 @@
-import { useEffect, useState } from 'react';
-import { HeartHandshake, History } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
+import AgentHero from '../components/dashboard/AgentHero';
+import LiveFeed from '../components/dashboard/LiveFeed';
+import AppsGrid from '../components/dashboard/AppsGrid';
+import Suggestions from '../components/dashboard/Suggestions';
 
-const Dashboard = ({ onUnauthorized }) => {
-  const [mutualMatches, setMutualMatches] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [selectedProfile, setSelectedProfile] = useState(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+const STATIC_PULSE = [
+  { id: 's1', tone: 'sage',       who: 'Кампус',  what: 'открывает новый набор клубов на этой неделе', tag: 'Spaces',  time: '2 ч назад' },
+  { id: 's2', tone: 'butter',     who: 'Лекторий', what: 'AI Talks #14 — четверг 19:00, аудитория 401', tag: 'Event',   time: 'сегодня' },
+  { id: 's3', tone: 'sky',        who: 'Попутка', what: 'до общежития №5 — три места свободно',          tag: 'Ride',    time: '20 мин назад' },
+];
+
+const Dashboard = ({ onUnauthorized, onNavigate, onOpenUserProfile, onSayHi }) => {
+  const [profile, setProfile] = useState(null);
+  const [mutual, setMutual] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      setIsLoading(true);
-      setErrorMessage('');
-
-      try {
-        const [mutualResponse, historyResponse] = await Promise.all([
-          api.get('/matches/mutual'),
-          api.get('/matches/history'),
-        ]);
-
-        setMutualMatches(mutualResponse.data?.mutual_matches || []);
-        setHistory(historyResponse.data?.history || []);
-      } catch (error) {
-        if (error?.response?.status === 401) {
-          onUnauthorized?.();
-          return;
-        }
-        setErrorMessage(error?.response?.data?.detail || 'Не удалось загрузить панель.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboard();
-  }, [onUnauthorized]);
-
-  const viewProfile = async (userId) => {
-    setIsLoadingProfile(true);
-    try {
-      const response = await api.get(`/profiles/user/${userId}`);
-      setSelectedProfile(response.data);
-    } catch (error) {
-      if (error?.response?.status === 401) {
+    const handleErr = (e) => {
+      if (e?.response?.status === 401) {
         onUnauthorized?.();
         return;
       }
-      setErrorMessage(error?.response?.data?.detail || 'Не удалось открыть профиль пользователя.');
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  };
+      setErrorMessage(e?.response?.data?.detail || 'Не удалось загрузить ленту.');
+    };
 
-  if (isLoading) {
-    return (
-      <div className="backdrop-blur-xl bg-white/50 rounded-3xl border border-white/70 p-8 text-slate-700">
-        Загружаем панель...
-      </div>
-    );
-  }
+    api
+      .get('/profiles/me')
+      .then((r) => setProfile(r.data))
+      .catch(handleErr);
+
+    api
+      .get('/matches/mutual')
+      .then((r) => setMutual(r.data?.mutual_matches || []))
+      .catch(handleErr);
+
+    api
+      .get('/profiles/match', { params: { limit: 6 } })
+      .then((r) => setSuggestions(Array.isArray(r.data) ? r.data : []))
+      .catch(handleErr);
+  }, [onUnauthorized]);
+
+  const feedItems = useMemo(() => {
+    const matchEvents = mutual.slice(0, 5).map((m, i) => ({
+      id: `match-${m.user_id || i}`,
+      tone: 'rose',
+      who: m.name || m.full_name || 'Кто-то',
+      what: 'ответил тебе взаимностью',
+      tag: 'Match',
+      time: m.matched_at ? new Date(m.matched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'just now',
+    }));
+    return [...matchEvents, ...STATIC_PULSE];
+  }, [mutual]);
 
   return (
-    <div className="space-y-6">
-      <div className="backdrop-blur-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 rounded-3xl border border-white/60 p-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-          Dashboard
-        </h1>
-        <p className="text-slate-600 mt-2">Обзор ваших активностей и совпадений.</p>
-      </div>
-
+    <>
       {errorMessage && (
-        <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-3 text-red-700">
+        <div className="hub-msg-error" style={{ marginBottom: '1.2rem' }}>
           {errorMessage}
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <HeartHandshake className="text-emerald-600" size={20} />
-            <h2 className="text-lg font-semibold text-slate-900">Взаимные матчи</h2>
-          </div>
-
-          {mutualMatches.length === 0 ? (
-            <p className="text-slate-500 text-sm">Пока нет взаимных совпадений.</p>
-          ) : (
-            <div className="space-y-2">
-              {mutualMatches.map((item) => (
-                <div key={`${item.name}-${item.matched_at}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
-                  <p className="text-slate-800 font-medium">{item.name}</p>
-                  <button
-                    type="button"
-                    onClick={() => viewProfile(item.user_id)}
-                    className="mt-1 text-xs text-emerald-700 hover:text-emerald-900"
-                  >
-                    Открыть профиль
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <History className="text-cyan-600" size={20} />
-            <h2 className="text-lg font-semibold text-slate-900">История действий</h2>
-          </div>
-
-          {history.length === 0 ? (
-            <p className="text-slate-500 text-sm">История пока пустая.</p>
-          ) : (
-            <div className="space-y-2 max-h-80 overflow-auto pr-1">
-              {history.map((item, index) => (
-                <div key={`${item.matched_user_name}-${index}`} className="rounded-xl bg-white/60 border border-slate-200/60 px-3 py-2">
-                  <p className="text-slate-800 font-medium">
-                    {item.action === 'like' ? 'Лайк' : 'Пропуск'} для {item.matched_user_name}
-                  </p>
-                  <p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Профиль пользователя</h2>
-          {isLoadingProfile && <p className="text-sm text-slate-500">Загружаем профиль...</p>}
-          {!isLoadingProfile && !selectedProfile && (
-            <p className="text-sm text-slate-500">Выберите взаимный матч, чтобы посмотреть анкету.</p>
-          )}
-          {!isLoadingProfile && selectedProfile && (
-            <div className="space-y-3 text-sm text-slate-700">
-              <div className="flex items-center gap-3">
-                {selectedProfile.avatar_url ? (
-                  <img
-                    src={selectedProfile.avatar_url}
-                    alt="Аватар пользователя"
-                    className="w-14 h-14 rounded-xl object-cover border border-white/70"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-cyan-100 flex items-center justify-center border border-white/70">
-                    <span className="text-2xl">👤</span>
-                  </div>
-                )}
-                <p className="text-xl font-semibold text-slate-900">{selectedProfile.full_name}</p>
-              </div>
-              <p>Возраст: {selectedProfile.age}</p>
-              <p>{selectedProfile.bio}</p>
-              <div className="flex flex-wrap gap-2">
-                {selectedProfile.interests.map((interest) => (
-                  <span
-                    key={interest}
-                    className="rounded-full bg-emerald-500/20 border border-emerald-300/50 px-2 py-0.5 text-xs text-emerald-700"
-                  >
-                    {interest}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: '3rem', alignItems: 'center' }} className="dashboard-top">
+        <AgentHero
+          name={profile?.full_name}
+          onPrimary={() => onNavigate?.('matches')}
+          onAgent={() => onNavigate?.('chat')}
+        />
+        <LiveFeed items={feedItems} onOpen={() => onNavigate?.('chat')} />
       </div>
-    </div>
+
+      <AppsGrid onNavigate={onNavigate} badges={{ chat: mutual.length || undefined }} />
+
+      <Suggestions
+        items={suggestions}
+        onOpenProfile={(uid) => onOpenUserProfile?.(uid)}
+        onSayHi={(uid) => onSayHi?.(uid)}
+      />
+    </>
   );
 };
 

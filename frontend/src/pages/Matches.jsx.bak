@@ -151,7 +151,7 @@ const Matches = ({ onUnauthorized }) => {
   const matchMeta = buildMatchMeta(current);
 
   return (
-    <div className="hub-shell-inline space-y-4">
+    <div className="space-y-4">
       <form
         onSubmit={handleApplyFilters}
         className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/60 p-4 grid grid-cols-4 gap-3"

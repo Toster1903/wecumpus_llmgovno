@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, MessageCircle } from 'lucide-react';
 import api from '../api/axios';
+
+const resolveAvatar = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return `http://localhost:8000${url}`;
+};
 
 const UserProfilePage = ({ userId, onBack, onUnauthorized, onWrite }) => {
   const [profile, setProfile] = useState(null);
@@ -37,80 +42,106 @@ const UserProfilePage = ({ userId, onBack, onUnauthorized, onWrite }) => {
 
   if (isLoading) {
     return (
-      <div className="backdrop-blur-xl bg-white/50 rounded-3xl border border-white/70 p-8 text-slate-700">
-        Загружаем страницу пользователя...
+      <div className="elegant-shell">
+        <div className="elegant-content">
+          <div className="elegant-card">
+            <span className="spin" /> Загружаем страницу пользователя...
+          </div>
+        </div>
       </div>
     );
   }
 
   if (errorMessage || !profile) {
     return (
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-lg bg-white/70 border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-white inline-flex items-center gap-2"
-        >
-          <ArrowLeft size={16} /> Назад в сервис
-        </button>
-
-        <div className="rounded-xl bg-red-500/10 border border-red-300/50 px-4 py-3 text-red-700 text-sm">
-          {errorMessage || 'Профиль не найден.'}
+      <div className="elegant-shell">
+        <div className="elegant-content" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <button type="button" onClick={onBack} className="btn-elegant-ghost" style={{ alignSelf: 'flex-start' }}>
+            ← Назад в сервис
+          </button>
+          <div className="elegant-card">
+            <div className="elegant-msg-error">{errorMessage || 'Профиль не найден.'}</div>
+          </div>
         </div>
       </div>
     );
   }
 
+  const avatar = resolveAvatar(profile.avatar_url);
+
   return (
-    <div className="space-y-4">
-      <button
-        type="button"
-        onClick={onBack}
-        className="rounded-lg bg-white/70 border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-white inline-flex items-center gap-2"
-      >
-        <ArrowLeft size={16} /> Назад в сервис
-      </button>
+    <div className="elegant-shell">
+      <div className="elegant-content" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <button type="button" onClick={onBack} className="btn-elegant-ghost">
+            ← Назад в сервис
+          </button>
+          <button type="button" onClick={() => onWrite?.(profile.user_id)} className="btn-elegant">
+            Написать →
+          </button>
+        </div>
 
-      <button
-        type="button"
-        onClick={() => onWrite?.(profile.user_id)}
-        className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 text-sm inline-flex items-center gap-2"
-      >
-        <MessageCircle size={16} /> Написать
-      </button>
+        <div className="elegant-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem', flexWrap: 'wrap' }}>
+            {avatar ? (
+              <img
+                src={avatar}
+                alt={profile.full_name}
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '4px solid var(--elegant-card)',
+                  boxShadow: '0 12px 30px -16px rgba(0,0,0,0.18)',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  background: 'var(--elegant-accent-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: "'Playfair Display', serif",
+                  fontSize: '2.6rem',
+                  color: 'var(--elegant-primary)',
+                }}
+              >
+                {(profile.full_name || '·').charAt(0).toUpperCase()}
+              </div>
+            )}
 
-      <div className="backdrop-blur-xl bg-white/50 border border-white/70 rounded-3xl p-6 space-y-4">
-        <div className="flex items-center gap-4">
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={profile.full_name} className="w-20 h-20 rounded-2xl object-cover border border-white/70" />
-          ) : (
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-100 to-cyan-100 flex items-center justify-center text-3xl border border-white/70">
-              👤
+            <div>
+              <div className="label-mono" style={{ marginBottom: '0.3rem', color: 'var(--elegant-text-muted)' }}>
+                Профиль
+              </div>
+              <h1 className="elegant-title" style={{ marginBottom: '0.2rem' }}>
+                {profile.full_name}
+              </h1>
+              <p className="elegant-sub" style={{ marginBottom: 0 }}>{profile.age} лет</p>
             </div>
-          )}
+          </div>
 
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{profile.full_name}</h1>
-            <p className="text-slate-600">Возраст: {profile.age}</p>
+            <div className="elegant-field-label" style={{ marginBottom: '0.4rem' }}>О пользователе</div>
+            <p style={{ fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--elegant-text)' }}>
+              {profile.bio || 'Без описания'}
+            </p>
           </div>
-        </div>
 
-        <div>
-          <h2 className="text-sm font-semibold text-slate-700 mb-1">О пользователе</h2>
-          <p className="text-slate-700 text-sm">{profile.bio}</p>
-        </div>
-
-        <div>
-          <h2 className="text-sm font-semibold text-slate-700 mb-1">Интересы</h2>
-          <div className="flex flex-wrap gap-2">
-            {(profile.interests || []).map((interest) => (
-              <span
-                key={interest}
-                className="rounded-full bg-emerald-500/20 border border-emerald-300/50 px-2.5 py-1 text-xs text-emerald-700"
-              >
-                {interest}
-              </span>
-            ))}
+          <div>
+            <div className="elegant-field-label" style={{ marginBottom: '0.5rem' }}>Интересы</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {(profile.interests || []).map((interest) => (
+                <span key={interest} className="elegant-chip">
+                  {interest}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
