@@ -5,6 +5,10 @@ import Login from './pages/Login';
 import ServiceHub from './pages/ServiceHub';
 import UserProfilePage from './pages/UserProfilePage';
 import Dashboard from './pages/Dashboard';
+import Events from './pages/Events';
+import Rides from './pages/Rides';
+import Plan from './pages/Plan';
+import Marketplace from './pages/Marketplace';
 import api from './api/axios';
 import { clearAuthToken, getAuthToken, setAuthToken } from './utils/authToken';
 
@@ -20,10 +24,10 @@ const APP_TO_PAGE = {
   chat: 'service',
   clubs: 'service',
   profile: 'profile',
-  events: 'service',
-  rides: 'service',
-  plan: 'service',
-  market: 'service',
+  events: 'events',
+  rides: 'rides',
+  plan: 'plan',
+  market: 'market',
 };
 
 function App() {
@@ -176,6 +180,10 @@ function App() {
             onInitialChatHandled={() => setPendingChatUserId(null)}
           />
         )}
+        {currentPage === 'events' && <Events onUnauthorized={handleLogout} />}
+        {currentPage === 'rides' && <Rides onUnauthorized={handleLogout} />}
+        {currentPage === 'plan' && <Plan onUnauthorized={handleLogout} />}
+        {currentPage === 'market' && <Marketplace onUnauthorized={handleLogout} />}
       </div>
     </div>
   );

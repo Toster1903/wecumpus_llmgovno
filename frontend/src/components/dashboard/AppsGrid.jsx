@@ -3,10 +3,10 @@ const APPS = [
   { id: 'chat',    label: 'Inbox',       icon: '◈', tone: 'rose',       desc: 'Сообщения и взаимные мэтчи' },
   { id: 'clubs',   label: 'Spaces',      icon: '◐', tone: 'sky',        desc: 'Клубы и совместные комнаты' },
   { id: 'profile', label: 'Profile',     icon: '◇', tone: 'butter',     desc: 'Твоя анкета и интересы' },
-  { id: 'events',  label: 'Events',      icon: '◉', tone: 'terracotta', desc: 'Скоро · Лента событий кампуса' },
-  { id: 'rides',   label: 'Rides',       icon: '◊', tone: '',           desc: 'Скоро · Попутчики и поездки' },
-  { id: 'plan',    label: 'Plan',        icon: '⊛', tone: 'sage',       desc: 'Скоро · Календарь и встречи' },
-  { id: 'market',  label: 'Marketplace', icon: '❋', tone: 'rose',       desc: 'Скоро · Учебные материалы' },
+  { id: 'events',  label: 'Events',      icon: '◉', tone: 'terracotta', desc: 'Лента событий кампуса' },
+  { id: 'rides',   label: 'Rides',       icon: '◊', tone: '',           desc: 'Попутчики и поездки' },
+  { id: 'plan',    label: 'Plan',        icon: '⊛', tone: 'sage',       desc: 'Календарь и встречи' },
+  { id: 'market',  label: 'Marketplace', icon: '❋', tone: 'rose',       desc: 'Учебные материалы' },
 ];
 
 const AppsGrid = ({ onNavigate, badges = {} }) => {

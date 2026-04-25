@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from app.api.v1.endpoints import users, profiles, auth, matches, messages, clubs
+from app.api.v1.endpoints import users, profiles, auth, matches, messages, clubs, events, rides, plan, market
 from app.db.session import engine, Base
 from app.models.user import User
 from app.models.profile import Profile
@@ -14,6 +14,10 @@ from app.models.message import Message
 from app.models.club import Club
 from app.models.club_member import ClubMember
 from app.models.club_invite import ClubInvite
+from app.models.event import Event
+from app.models.ride import Ride, RidePassenger
+from app.models.meeting import Meeting, MeetingParticipant
+from app.models.market_item import MarketItem
 
 logger = logging.getLogger(__name__)
 
@@ -59,3 +63,7 @@ app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"]
 app.include_router(matches.router, prefix="/api/v1/matches", tags=["matches"])
 app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
 app.include_router(clubs.router, prefix="/api/v1/clubs", tags=["clubs"])
+app.include_router(events.router, prefix="/api/v1/events", tags=["events"])
+app.include_router(rides.router, prefix="/api/v1/rides", tags=["rides"])
+app.include_router(plan.router, prefix="/api/v1/plan", tags=["plan"])
+app.include_router(market.router, prefix="/api/v1/market", tags=["market"])
