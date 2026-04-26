@@ -2,17 +2,53 @@ version: '3.8'
 
 services:
   db:
-    image: ankane/pgvector:latest # Специальный образ Postgres уже с расширением vector
+    image: ankane/pgvector:latest
     container_name: wecupmus_db
     restart: always
     environment:
       POSTGRES_USER: dmitriy
-      POSTGRES_PASSWORD: your_password # Придумай пароль
+      POSTGRES_PASSWORD: your_password
       POSTGRES_DB: wecupmus
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: wecupmus_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # GPU support (раскомментируй если есть NVIDIA GPU):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: wecupmus_ollama_init
+    depends_on:
+      - ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for Ollama...';
+        until ollama list > /dev/null 2>&1; do sleep 2; done;
+        echo 'Pulling qwen2.5:3b...';
+        ollama pull qwen2.5:3b;
+        echo 'Model ready.';
+      "
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    restart: "no"
 
   backend:
     build: ./backend
@@ -23,8 +59,11 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+psycopg2://dmitriy:your_password@db:5432/wecupmus
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
     depends_on:
       - db
+      - ollama
 
   frontend:
     build: ./frontend
@@ -39,3 +78,4 @@ services:
 
 volumes:
   postgres_data:
+  ollama_data:

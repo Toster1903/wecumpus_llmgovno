@@ -16,6 +16,7 @@ def _enrich(item: MarketItem, db: Session) -> dict:
         "category": item.category,
         "condition": item.condition,
         "is_available": item.is_available,
+        "image_urls": item.image_urls or [],
         "created_at": item.created_at,
     }
 
@@ -28,7 +29,7 @@ def list_items(db: Session, category: str | None = None) -> list[dict]:
     return [_enrich(i, db) for i in items]
 
 
-def create_item(db: Session, seller_id: int, data: MarketItemCreate) -> dict:
+def create_item(db: Session, seller_id: int, data: MarketItemCreate, image_urls: list[str] | None = None) -> dict:
     item = MarketItem(
         seller_id=seller_id,
         title=data.title,
@@ -36,6 +37,7 @@ def create_item(db: Session, seller_id: int, data: MarketItemCreate) -> dict:
         price=data.price,
         category=data.category,
         condition=data.condition,
+        image_urls=image_urls or [],
     )
     db.add(item)
     db.commit()

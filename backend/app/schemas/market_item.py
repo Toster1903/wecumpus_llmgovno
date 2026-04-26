@@ -31,6 +31,7 @@ class MarketItemOut(BaseModel):
     category: str
     condition: str
     is_available: bool
+    image_urls: Optional[list[str]] = []
     created_at: datetime
 
     class Config:

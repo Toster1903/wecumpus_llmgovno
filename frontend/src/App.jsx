@@ -2,32 +2,37 @@ import { useEffect, useState } from 'react';
 import ProfileBuilder from './pages/ProfileBuilder';
 import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
-import ServiceHub from './pages/ServiceHub';
-import UserProfilePage from './pages/UserProfilePage';
 import Dashboard from './pages/Dashboard';
 import Events from './pages/Events';
 import Rides from './pages/Rides';
 import Plan from './pages/Plan';
 import Marketplace from './pages/Marketplace';
+import MatchesPage from './pages/MatchesPage';
+import InboxPage from './pages/InboxPage';
+import Posts from './pages/Posts';
+import UserProfilePage from './pages/UserProfilePage';
+import ChatBot from './components/ChatBot';
 import api from './api/axios';
 import { clearAuthToken, getAuthToken, setAuthToken } from './utils/authToken';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Home' },
-  { id: 'service',   label: 'Match' },
-  { id: 'chat',      label: 'Inbox' },
+  { id: 'matches',   label: 'Match' },
+  { id: 'inbox',     label: 'Inbox' },
+  { id: 'posts',     label: 'Лента' },
   { id: 'profile',   label: 'Profile' },
 ];
 
 const APP_TO_PAGE = {
-  matches: 'service',
-  chat: 'service',
-  clubs: 'service',
+  matches: 'matches',
+  chat:    'inbox',
+  clubs:   'inbox',
   profile: 'profile',
-  events: 'events',
-  rides: 'rides',
-  plan: 'plan',
-  market: 'market',
+  events:  'events',
+  rides:   'rides',
+  plan:    'plan',
+  market:  'market',
+  posts:   'posts',
 };
 
 function App() {
@@ -47,7 +52,6 @@ function App() {
         setMe(null);
         return;
       }
-
       setIsCheckingProfile(true);
       try {
         const r = await api.get('/profiles/me');
@@ -65,7 +69,6 @@ function App() {
         setIsCheckingProfile(false);
       }
     };
-
     checkProfile();
   }, [isAuthenticated]);
 
@@ -94,17 +97,15 @@ function App() {
 
   const handleStartChatFromProfile = (userId) => {
     setPendingChatUserId(userId);
-    setCurrentPage('service');
+    setCurrentPage('inbox');
   };
 
   const handleAppNavigate = (appId) => {
-    const page = APP_TO_PAGE[appId] || 'service';
+    const page = APP_TO_PAGE[appId] || 'dashboard';
     setCurrentPage(page);
   };
 
-  if (!isAuthenticated) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
+  if (!isAuthenticated) return <Login onLoginSuccess={handleLoginSuccess} />;
 
   if (isCheckingProfile) {
     return (
@@ -119,10 +120,7 @@ function App() {
   if (!hasProfile) {
     return (
       <ProfileSetup
-        onProfileCreated={() => {
-          setHasProfile(true);
-          setCurrentPage('dashboard');
-        }}
+        onProfileCreated={() => { setHasProfile(true); setCurrentPage('dashboard'); }}
         onLogout={handleLogout}
       />
     );
@@ -151,7 +149,7 @@ function App() {
         <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} initials={initials} />
         <UserProfilePage
           userId={selectedUserProfileId}
-          onBack={() => setCurrentPage('service')}
+          onBack={() => setCurrentPage('matches')}
           onUnauthorized={handleLogout}
           onWrite={handleStartChatFromProfile}
         />
@@ -162,7 +160,6 @@ function App() {
   return (
     <div className="page-shell">
       <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} initials={initials} />
-
       <div className="page-content">
         {currentPage === 'dashboard' && (
           <Dashboard
@@ -172,19 +169,27 @@ function App() {
             onSayHi={handleStartChatFromProfile}
           />
         )}
-        {(currentPage === 'service' || currentPage === 'chat') && (
-          <ServiceHub
+        {currentPage === 'matches' && (
+          <MatchesPage
+            onUnauthorized={handleLogout}
+            onOpenUserProfile={handleOpenUserProfile}
+          />
+        )}
+        {currentPage === 'inbox' && (
+          <InboxPage
             onUnauthorized={handleLogout}
             onOpenUserProfile={handleOpenUserProfile}
             initialChatUserId={pendingChatUserId}
             onInitialChatHandled={() => setPendingChatUserId(null)}
           />
         )}
+        {currentPage === 'posts'  && <Posts onUnauthorized={handleLogout} />}
         {currentPage === 'events' && <Events onUnauthorized={handleLogout} />}
-        {currentPage === 'rides' && <Rides onUnauthorized={handleLogout} />}
-        {currentPage === 'plan' && <Plan onUnauthorized={handleLogout} />}
+        {currentPage === 'rides'  && <Rides onUnauthorized={handleLogout} />}
+        {currentPage === 'plan'   && <Plan onUnauthorized={handleLogout} />}
         {currentPage === 'market' && <Marketplace onUnauthorized={handleLogout} />}
       </div>
+      <ChatBot onUnauthorized={handleLogout} />
     </div>
   );
 }
@@ -209,7 +214,6 @@ const Nav = ({ currentPage, setCurrentPage, onLogout, initials }) => (
           ))}
         </div>
       </div>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
         <div className="app-nav-user">
           <span className="app-nav-dot" />

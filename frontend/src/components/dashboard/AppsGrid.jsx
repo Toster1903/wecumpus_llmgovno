@@ -1,12 +1,12 @@
 const APPS = [
-  { id: 'matches', label: 'Match',       icon: '☁', tone: 'sage',       desc: 'Подбор однокурсников и интересы' },
-  { id: 'chat',    label: 'Inbox',       icon: '◈', tone: 'rose',       desc: 'Сообщения и взаимные мэтчи' },
-  { id: 'clubs',   label: 'Spaces',      icon: '◐', tone: 'sky',        desc: 'Клубы и совместные комнаты' },
+  { id: 'matches', label: 'Match',       icon: '☁', tone: 'sage',       desc: 'Подбор однокурсников по интересам' },
+  { id: 'inbox',   label: 'Inbox',       icon: '◈', tone: 'rose',       desc: 'Личные и клубные чаты' },
+  { id: 'posts',   label: 'Лента',       icon: '◐', tone: 'sky',        desc: 'Статьи и посты сообщества' },
   { id: 'profile', label: 'Profile',     icon: '◇', tone: 'butter',     desc: 'Твоя анкета и интересы' },
-  { id: 'events',  label: 'Events',      icon: '◉', tone: 'terracotta', desc: 'Лента событий кампуса' },
-  { id: 'rides',   label: 'Rides',       icon: '◊', tone: '',           desc: 'Попутчики и поездки' },
+  { id: 'events',  label: 'Events',      icon: '◉', tone: 'terracotta', desc: 'События кампуса' },
+  { id: 'rides',   label: 'Rides',       icon: '◊', tone: '',           desc: 'Попутки с картой маршрутов' },
   { id: 'plan',    label: 'Plan',        icon: '⊛', tone: 'sage',       desc: 'Календарь и встречи' },
-  { id: 'market',  label: 'Marketplace', icon: '❋', tone: 'rose',       desc: 'Учебные материалы' },
+  { id: 'market',  label: 'Marketplace', icon: '❋', tone: 'rose',       desc: 'Объявления с фотографиями' },
 ];
 
 const AppsGrid = ({ onNavigate, badges = {} }) => {
