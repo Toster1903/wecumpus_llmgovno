@@ -29,9 +29,20 @@ class UserCreate(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    email: EmailStr
+    email: Optional[EmailStr] = None
     role: str
+    is_verified: bool
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class TelegramAuthData(BaseModel):
+    id: int
+    first_name: str
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    auth_date: int
+    hash: str
