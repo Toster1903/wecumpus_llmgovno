@@ -45,6 +45,13 @@ def init_database() -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_club_id ON messages (club_id);"))
             # market images
             conn.execute(text("ALTER TABLE market_items ADD COLUMN IF NOT EXISTS image_urls TEXT[];"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_id VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_username VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_first_name VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL;"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_telegram_id ON users (telegram_id) WHERE telegram_id IS NOT NULL;"))
     except SQLAlchemyError:
         logger.exception("Database initialization failed")
 
