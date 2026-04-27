@@ -11,3 +11,4 @@ sentence-transformers
 pgvector
 python-jose[cryptography]
 python-multipart
+slowapi

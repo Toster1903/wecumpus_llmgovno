@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RideCreate(BaseModel):
-    from_location: str
-    to_location: str
+    from_location: str = Field(..., min_length=1, max_length=300)
+    to_location: str = Field(..., min_length=1, max_length=300)
     departure_time: datetime
-    seats_total: int = 1
-    comment: Optional[str] = None
+    seats_total: int = Field(1, ge=1, le=20)
+    comment: Optional[str] = Field(None, max_length=500)
 
 
 class RideOut(BaseModel):

@@ -1,23 +1,32 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+_VALID_CATEGORIES = {"electronics", "books", "clothing", "furniture", "sports", "food", "other"}
+_VALID_CONDITIONS = {"new", "like_new", "good", "fair", "poor"}
 
 
 class MarketItemCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
-    price: Decimal = Decimal("0")
-    category: str = "other"
-    condition: str = "good"
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    price: Decimal = Field(Decimal("0"), ge=0, le=Decimal("999999.99"))
+    category: str = Field("other", max_length=50)
+    condition: str = Field("good", max_length=50)
+
+    def model_post_init(self, __context) -> None:
+        if self.category not in _VALID_CATEGORIES:
+            self.category = "other"
+        if self.condition not in _VALID_CONDITIONS:
+            self.condition = "good"
 
 
 class MarketItemUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    price: Optional[Decimal] = None
-    category: Optional[str] = None
-    condition: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    price: Optional[Decimal] = Field(None, ge=0, le=Decimal("999999.99"))
+    category: Optional[str] = Field(None, max_length=50)
+    condition: Optional[str] = Field(None, max_length=50)
     is_available: Optional[bool] = None
 
 

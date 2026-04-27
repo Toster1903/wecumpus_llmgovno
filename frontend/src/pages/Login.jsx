@@ -37,13 +37,17 @@ const Login = ({ onLoginSuccess }) => {
 
       await loginWithCredentials(email, password);
     } catch (error) {
+      const detail = error?.response?.data?.detail;
+      const message = Array.isArray(detail)
+        ? detail.map((e) => e.msg?.replace(/^Value error, /, '') ?? e).join('; ')
+        : typeof detail === 'string'
+          ? detail
+          : null;
+
       if (mode === 'register') {
-        setErrorMessage(
-          error?.response?.data?.detail ||
-            'Не удалось зарегистрироваться. Возможно, такой email уже существует.'
-        );
+        setErrorMessage(message || 'Не удалось зарегистрироваться. Возможно, такой email уже существует.');
       } else {
-        setErrorMessage(error?.response?.data?.detail || 'Не удалось войти. Проверьте email и пароль.');
+        setErrorMessage(message || 'Не удалось войти. Проверьте email и пароль.');
       }
     } finally {
       setIsSubmitting(false);

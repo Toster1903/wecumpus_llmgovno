@@ -4,9 +4,9 @@ from typing import List, Optional
 
 
 class ClubCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=120)
-    description: Optional[str] = None
-    avatar_url: Optional[str] = None
+    name: str = Field(..., min_length=2, max_length=120)
+    description: Optional[str] = Field(None, max_length=1000)
+    avatar_url: Optional[str] = Field(None, max_length=500)
     tags: List[str] = Field(default_factory=list)
 
 

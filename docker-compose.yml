@@ -6,9 +6,9 @@ services:
     container_name: wecupmus_db
     restart: always
     environment:
-      POSTGRES_USER: dmitriy
-      POSTGRES_PASSWORD: your_password
-      POSTGRES_DB: wecupmus
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5433:5432"
     volumes:
@@ -58,9 +58,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+psycopg2://dmitriy:your_password@db:5432/wecupmus
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=qwen2.5:3b
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
       - db
       - ollama
