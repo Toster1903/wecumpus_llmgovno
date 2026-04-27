@@ -10,10 +10,12 @@ from app.models.club_invite import ClubInvite
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash
 
-def create_new_user(db: Session, user_data: UserCreate):
+
+def create_new_user(db: Session, user_data: UserCreate) -> User:
     new_user = User(
         email=user_data.email,
-        hashed_password=get_password_hash(user_data.password)
+        hashed_password=get_password_hash(user_data.password),
+        is_verified=False,
     )
     db.add(new_user)
     try:
@@ -24,8 +26,28 @@ def create_new_user(db: Session, user_data: UserCreate):
         db.rollback()
         raise ValueError("Пользователь с таким email уже существует") from exc
 
+
+def upsert_telegram_user(db: Session, tg_id: str, first_name: str, username: str | None) -> User:
+    user = db.query(User).filter(User.telegram_id == tg_id).first()
+    if user:
+        user.telegram_first_name = first_name
+        user.telegram_username = username
+        db.commit()
+        db.refresh(user)
+        return user
+    user = User(
+        telegram_id=tg_id,
+        telegram_first_name=first_name,
+        telegram_username=username,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def delete_user(db: Session, user_id: int):
-    """Delete user by ID"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return None
