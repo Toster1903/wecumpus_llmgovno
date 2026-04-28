@@ -2,7 +2,7 @@ import bcrypt
 import hashlib
 import hmac
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt
 from app.core.config import settings
 
@@ -23,15 +23,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_verification_token(user_id: int) -> str:
-    expire = datetime.utcnow() + timedelta(hours=24)
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
     return jwt.encode(
         {"sub": str(user_id), "type": "email_verification", "exp": expire},
         settings.SECRET_KEY,
@@ -39,7 +39,13 @@ def create_verification_token(user_id: int) -> str:
     )
 
 
+# Computed once at import — used for timing-safe dummy bcrypt in login
+_DUMMY_HASH = get_password_hash("dummy-password-for-timing-safety")
+
+
 def verify_telegram_auth(data: dict) -> bool:
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return False
     received_hash = data.get("hash", "")
     # Exclude hash and None values — Telegram omits optional fields from its own hash
     check_data = {k: str(v) for k, v in data.items() if k != "hash" and v is not None}

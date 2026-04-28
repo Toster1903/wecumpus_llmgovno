@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from jose import JWTError, jwt
@@ -14,6 +14,7 @@ from app.core.security import (
     create_access_token,
     create_verification_token,
     verify_telegram_auth,
+    _DUMMY_HASH,
 )
 from app.core.config import settings
 from app.schemas.user import TelegramAuthData
@@ -31,7 +32,12 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
 ):
     user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
+    # Always run bcrypt to prevent timing side-channel leaking Telegram-only accounts
+    password_ok = verify_password(
+        form_data.password,
+        user.hashed_password if (user and user.hashed_password) else _DUMMY_HASH,
+    )
+    if not user or not user.hashed_password or not password_ok:
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
     if not user.is_verified:
         raise HTTPException(status_code=403, detail="email_not_verified")
@@ -78,7 +84,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 class ResendRequest(BaseModel):
-    email: str
+    email: EmailStr
 
 
 @router.post("/resend-verification")
@@ -90,11 +96,10 @@ def resend_verification(
 ):
     from app.services.email_service import send_verification_email
 
-    user = db.query(User).filter(User.email == body.email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="user_not_found")
-    if user.is_verified:
-        raise HTTPException(status_code=400, detail="already_verified")
+    user = db.query(User).filter(User.email == str(body.email)).first()
+    # Always return 200 — don't leak whether this email is registered
+    if not user or user.is_verified:
+        return {"message": "Если этот email зарегистрирован и не подтверждён, письмо будет отправлено."}
 
     token = create_verification_token(user.id)
     try:
