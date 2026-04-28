@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ProfileBuilder from './pages/ProfileBuilder';
 import ProfileSetup from './pages/ProfileSetup';
 import Login from './pages/Login';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import Dashboard from './pages/Dashboard';
 import Events from './pages/Events';
 import Rides from './pages/Rides';
@@ -43,6 +44,10 @@ function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedUserProfileId, setSelectedUserProfileId] = useState(null);
   const [pendingChatUserId, setPendingChatUserId] = useState(null);
+
+  if (window.location.pathname === '/verify-email') {
+    return <VerifyEmailPage onGoToLogin={() => window.location.replace('/')} />;
+  }
 
   useEffect(() => {
     const checkProfile = async () => {
