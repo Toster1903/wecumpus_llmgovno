@@ -1,6 +1,6 @@
 # Git worktrees
 .worktrees/
-
+.claude/
 # OS / Editor
 .DS_Store
 Thumbs.db
@@ -8,9 +8,10 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
+.docs/
 # Python
-__pycache__/
+*.pyc
+.__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -35,6 +36,7 @@ dist/
 .coverage.*
 htmlcov/
 .cache/
+.cache/pip/
 
 # Backend env/runtime
 backend/.env
