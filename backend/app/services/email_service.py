@@ -33,12 +33,24 @@ def _build_verification_message(to_email: str, token: str) -> MIMEMultipart:
 
 
 def send_verification_email(to_email: str, token: str) -> None:
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        logger.warning("SMTP credentials not configured, skipping email to %s", to_email)
+        return
+
     msg = _build_verification_message(to_email, token)
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_FROM, to_email, msg.as_string())
+        # Try STARTTLS on port 587 first, fall back to SSL on port 465
+        if settings.SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_FROM, to_email, msg.as_string())
+        else:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_FROM, to_email, msg.as_string())
     except Exception:
         logger.exception("Failed to send verification email to %s", to_email)
         raise

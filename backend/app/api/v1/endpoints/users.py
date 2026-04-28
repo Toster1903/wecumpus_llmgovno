@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -14,18 +14,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _send_email_background(user_id: int, email: str, token: str) -> None:
+    try:
+        send_verification_email(email, token)
+    except Exception:
+        logger.exception("Could not send verification email for user %s", user_id)
+
+
 @router.post("/", response_model=UserOut)
-def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
+def register_user(
+    user_in: UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     try:
         user = user_service.create_new_user(db, user_in)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     token = create_verification_token(user.id)
-    try:
-        send_verification_email(user.email, token)
-    except Exception:
-        logger.exception("Could not send verification email for user %s", user.id)
+    background_tasks.add_task(_send_email_background, user.id, user.email, token)
 
     return user
 
