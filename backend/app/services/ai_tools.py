@@ -8,7 +8,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import cast, or_, String
+from sqlalchemy.dialects.postgresql import ARRAY
+
+
+def _array_overlap(column, values: list[str]):
+    """PostgreSQL && (array overlap) operator for SQLAlchemy ARRAY columns."""
+    return column.op("&&")(cast(values, ARRAY(String())))
 
 from app.models.profile import Profile
 from app.models.event import Event
@@ -150,7 +156,7 @@ TOOL_SCHEMAS = [
 def find_users_by_interests(db: Session, interests: list[str], **_) -> list[dict]:
     profiles = (
         db.query(Profile)
-        .filter(Profile.interests.overlap(interests))
+        .filter(_array_overlap(Profile.interests, interests))
         .filter(Profile.is_looking == True)
         .limit(5)
         .all()
@@ -175,7 +181,7 @@ def find_events_for_user(db: Session, user_id: int, **_) -> list[dict]:
     events = (
         db.query(Event)
         .filter(Event.start_time > now)
-        .filter(Event.tags.overlap(profile.interests))
+        .filter(_array_overlap(Event.tags, profile.interests))
         .order_by(Event.start_time)
         .limit(5)
         .all()
@@ -189,7 +195,7 @@ def find_users_for_event(db: Session, event_id: int, **_) -> list[dict]:
         return []
     profiles = (
         db.query(Profile)
-        .filter(Profile.interests.overlap(event.tags))
+        .filter(_array_overlap(Profile.interests, event.tags))
         .filter(Profile.is_looking == True)
         .limit(5)
         .all()
@@ -227,7 +233,7 @@ def search_marketplace(db: Session, query: str, category: str | None = None, **_
 def find_clubs_by_tags(db: Session, tags: list[str], **_) -> list[dict]:
     clubs = (
         db.query(Club)
-        .filter(Club.tags.overlap(tags))
+        .filter(_array_overlap(Club.tags, tags))
         .limit(5)
         .all()
     )
