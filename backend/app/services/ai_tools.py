@@ -5,16 +5,16 @@ Each executor receives (db: Session, **kwargs) and returns list[dict].
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import or_
 
 from app.models.profile import Profile
 from app.models.event import Event
 from app.models.club import Club
 from app.models.market_item import MarketItem
 from app.models.ride import Ride
-from app.models.user import User
 
 # ── Ollama tool schemas ────────────────────────────────────────────────────────
 
@@ -156,11 +156,13 @@ def find_users_by_interests(db: Session, interests: list[str], **_) -> list[dict
     profiles = (
         db.query(Profile)
         .filter(Profile.interests.overlap(interests))
+        .filter(Profile.is_looking == True)
         .limit(5)
         .all()
     )
     return [
         {
+            "user_id": p.user_id,
             "name": p.full_name,
             "age": p.age,
             "interests": p.interests,
@@ -193,11 +195,12 @@ def find_users_for_event(db: Session, event_id: int, **_) -> list[dict]:
     profiles = (
         db.query(Profile)
         .filter(Profile.interests.overlap(event.tags))
+        .filter(Profile.is_looking == True)
         .limit(5)
         .all()
     )
     return [
-        {"name": p.full_name, "interests": p.interests, "bio": p.bio}
+        {"user_id": p.user_id, "name": p.full_name, "interests": p.interests, "bio": p.bio}
         for p in profiles
     ]
 
@@ -240,6 +243,7 @@ def find_clubs_by_tags(db: Session, tags: list[str], **_) -> list[dict]:
 
 
 def get_upcoming_events(db: Session, limit: int = 5, **_) -> list[dict]:
+    limit = max(1, min(limit, 10))
     now = datetime.now(timezone.utc)
     events = (
         db.query(Event)
@@ -289,7 +293,7 @@ def _event_dict(e: Event) -> dict:
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 
-TOOL_EXECUTORS: dict[str, callable] = {
+TOOL_EXECUTORS: dict[str, Callable] = {
     "find_users_by_interests": find_users_by_interests,
     "find_events_for_user": find_events_for_user,
     "find_users_for_event": find_users_for_event,
