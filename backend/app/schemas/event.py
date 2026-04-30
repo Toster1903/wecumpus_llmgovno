@@ -23,6 +23,8 @@ class EventOut(BaseModel):
     end_time: Optional[datetime] = None
     tags: Optional[List[str]] = []
     created_at: datetime
+    is_registered: bool = False
+    registrations_count: int = 0
 
     class Config:
         from_attributes = True

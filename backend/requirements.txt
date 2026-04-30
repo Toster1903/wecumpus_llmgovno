@@ -12,3 +12,5 @@ pgvector
 python-jose[cryptography]
 python-multipart
 slowapi
+apscheduler
+aiogram

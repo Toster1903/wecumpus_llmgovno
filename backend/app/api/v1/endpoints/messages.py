@@ -43,9 +43,6 @@ def get_messages_with_user(
     if other_user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot open chat with yourself")
 
-    if not message_service.is_mutual_match(db, current_user.id, other_user_id):
-        raise HTTPException(status_code=403, detail="Chat available only for mutual matches")
-
     return message_service.get_conversation(db, current_user.id, other_user_id)
 
 
@@ -57,8 +54,5 @@ def send_message(
 ):
     if payload.receiver_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot send message to yourself")
-
-    if not message_service.is_mutual_match(db, current_user.id, payload.receiver_id):
-        raise HTTPException(status_code=403, detail="Chat available only for mutual matches")
 
     return message_service.create_message(db, current_user.id, payload.receiver_id, payload.content)

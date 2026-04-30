@@ -12,6 +12,7 @@ import MatchesPage from './pages/MatchesPage';
 import InboxPage from './pages/InboxPage';
 import Posts from './pages/Posts';
 import UserProfilePage from './pages/UserProfilePage';
+import Calendar from './pages/Calendar';
 import ChatBot from './components/ChatBot';
 import api from './api/axios';
 import { clearAuthToken, getAuthToken, setAuthToken } from './utils/authToken';
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { id: 'matches',   label: 'Match' },
   { id: 'inbox',     label: 'Inbox' },
   { id: 'posts',     label: 'Лента' },
+  { id: 'calendar',  label: 'Календарь' },
   { id: 'profile',   label: 'Profile' },
 ];
 
@@ -192,7 +194,8 @@ function App() {
         {currentPage === 'events' && <Events onUnauthorized={handleLogout} />}
         {currentPage === 'rides'  && <Rides onUnauthorized={handleLogout} />}
         {currentPage === 'plan'   && <Plan onUnauthorized={handleLogout} />}
-        {currentPage === 'market' && <Marketplace onUnauthorized={handleLogout} />}
+        {currentPage === 'market'    && <Marketplace onUnauthorized={handleLogout} />}
+        {currentPage === 'calendar'  && <Calendar onUnauthorized={handleLogout} />}
       </div>
       <ChatBot onUnauthorized={handleLogout} />
     </div>

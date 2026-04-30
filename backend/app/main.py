@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.api.v1.endpoints import (
     users, profiles, auth, matches, messages, clubs,
@@ -22,6 +23,7 @@ from app.models.club import Club
 from app.models.club_member import ClubMember
 from app.models.club_invite import ClubInvite
 from app.models.event import Event
+from app.models.event_registration import EventRegistration
 from app.models.ride import Ride, RidePassenger
 from app.models.meeting import Meeting, MeetingParticipant
 from app.models.market_item import MarketItem
@@ -85,9 +87,23 @@ async def add_security_headers(request: Request, call_next) -> Response:
     return response
 
 
+scheduler = AsyncIOScheduler()
+
+
 @app.on_event("startup")
-def on_startup() -> None:
+async def on_startup() -> None:
     init_database()
+    if settings.TELEGRAM_BOT_TOKEN:
+        from app.services.notification_service import send_event_reminders
+        scheduler.add_job(send_event_reminders, "interval", minutes=5, id="event_reminders")
+        scheduler.start()
+        logger.info("Telegram reminder scheduler started")
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
 
 app.include_router(auth.router,     prefix="/api/v1/auth",    tags=["auth"])
 app.include_router(users.router,    prefix="/api/v1/users",   tags=["users"])

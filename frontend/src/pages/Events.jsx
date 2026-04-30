@@ -17,6 +17,7 @@ const Events = ({ onUnauthorized }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [myUserId, setMyUserId] = useState(null);
+  const [registering, setRegistering] = useState({});
 
   const load = async () => {
     setIsLoading(true);
@@ -70,6 +71,32 @@ const Events = ({ onUnauthorized }) => {
     } catch (e) {
       if (e?.response?.status === 401) { onUnauthorized?.(); return; }
       setError(e?.response?.data?.detail || 'Не удалось удалить событие.');
+    }
+  };
+
+  const handleRegister = async (ev) => {
+    setRegistering((p) => ({ ...p, [ev.id]: true }));
+    try {
+      if (ev.is_registered) {
+        await api.delete(`/events/${ev.id}/register`);
+      } else {
+        await api.post(`/events/${ev.id}/register`);
+      }
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === ev.id
+            ? {
+                ...e,
+                is_registered: !ev.is_registered,
+                registrations_count: ev.registrations_count + (ev.is_registered ? -1 : 1),
+              }
+            : e
+        )
+      );
+    } catch (e) {
+      if (e?.response?.status === 401) { onUnauthorized?.(); return; }
+    } finally {
+      setRegistering((p) => ({ ...p, [ev.id]: false }));
     }
   };
 
@@ -145,7 +172,7 @@ const Events = ({ onUnauthorized }) => {
               <div key={ev.id} className="elegant-card" style={{ padding: '1.2rem 1.4rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
                       <span style={{ fontFamily: "'Fraunces', serif", fontSize: '1.05rem', fontWeight: 600, color: 'var(--elegant-text)' }}>
                         {ev.title}
                       </span>
@@ -156,21 +183,35 @@ const Events = ({ onUnauthorized }) => {
                     {ev.description && (
                       <p style={{ fontSize: '0.9rem', color: 'var(--elegant-text-muted)', margin: '0 0 0.5rem' }}>{ev.description}</p>
                     )}
-                    <div style={{ display: 'flex', gap: '1.2rem', fontSize: '0.8rem', color: 'var(--elegant-text-faint)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <div style={{ display: 'flex', gap: '1.2rem', fontSize: '0.8rem', color: 'var(--elegant-text-faint)', fontFamily: "'JetBrains Mono', monospace", flexWrap: 'wrap' }}>
                       {ev.location && <span>📍 {ev.location}</span>}
                       <span>🕐 {fmt(ev.start_time)}{ev.end_time ? ` — ${fmt(ev.end_time)}` : ''}</span>
-                      <span>by {ev.creator_name || 'Кто-то'}</span>
+                      <span>👤 {ev.creator_name || 'Кто-то'}</span>
+                      {ev.registrations_count > 0 && (
+                        <span>✅ {ev.registrations_count} запис{ev.registrations_count === 1 ? 'ь' : ev.registrations_count < 5 ? 'и' : 'ей'}</span>
+                      )}
                     </div>
                   </div>
-                  {ev.creator_id === myUserId && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
                     <button
-                      type="button" onClick={() => handleDelete(ev.id)}
-                      className="btn-elegant-ghost"
-                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', color: 'var(--elegant-text-muted)' }}
+                      type="button"
+                      className={ev.is_registered ? 'btn-elegant' : 'btn-elegant-ghost'}
+                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.9rem', whiteSpace: 'nowrap' }}
+                      disabled={registering[ev.id]}
+                      onClick={() => handleRegister(ev)}
                     >
-                      Удалить
+                      {registering[ev.id] ? '...' : ev.is_registered ? '✓ Записан' : 'Записаться'}
                     </button>
-                  )}
+                    {ev.creator_id === myUserId && (
+                      <button
+                        type="button" onClick={() => handleDelete(ev.id)}
+                        className="btn-elegant-ghost"
+                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', color: 'var(--elegant-text-muted)' }}
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
