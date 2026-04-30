@@ -42,7 +42,8 @@ def _post_json(url: str, payload: dict, timeout: int = 30) -> dict | None:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
-        logger.warning("Ollama request failed: %s", exc)
+        logger.warning("Ollama request failed: %s, %s", exc, req.full_url)
+
         return None
 
 
@@ -140,3 +141,81 @@ def suggest_feed_items(user_interests: list[str], items: list[dict]) -> list[dic
         return ordered
     except (ValueError, KeyError, json.JSONDecodeError):
         return items
+
+
+def chat_with_tools(
+    message: str,
+    history: list[dict] | None,
+    db,  # SQLAlchemy Session
+    user_id: int,
+) -> str:
+    """
+    Chat with Ollama using native tool use.
+    Makes up to 2 requests: first with tools, second with tool results if needed.
+    Falls back to plain chat() if tool use is unavailable.
+    """
+    from app.services.ai_tools import TOOL_SCHEMAS, TOOL_EXECUTORS
+    import json as _json
+
+    messages = [{"role": "system", "content": CAMPUS_SYSTEM_PROMPT}]
+    for item in (history or []):
+        role = item.get("role", "user")
+        content = item.get("content", "")
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
+
+    result = _post_json(
+        f"{OLLAMA_URL}/api/chat",
+        {
+            "model": OLLAMA_MODEL,
+            "messages": messages,
+            "tools": TOOL_SCHEMAS,
+            "stream": False,
+        },
+        timeout=60,
+    )
+    if not result:
+        return "AI-ассистент временно недоступен. Убедитесь, что Ollama запущена (`ollama serve`)."
+
+    response_message = result.get("message", {})
+    tool_calls = response_message.get("tool_calls") or []
+
+    if not tool_calls:
+        return response_message.get("content", "").strip()
+
+    # Execute each tool call
+    messages.append(response_message)
+    for call in tool_calls:
+        fn_name = call.get("function", {}).get("name", "")
+        raw_args = call.get("function", {}).get("arguments", {})
+        if isinstance(raw_args, str):
+            try:
+                raw_args = _json.loads(raw_args)
+            except _json.JSONDecodeError:
+                raw_args = {}
+
+        executor = TOOL_EXECUTORS.get(fn_name)
+        if executor:
+            try:
+                tool_result = executor(db=db, user_id=user_id, **raw_args)
+            except Exception as exc:
+                logger.warning("Tool %s failed: %s", fn_name, exc)
+                tool_result = []
+        else:
+            tool_result = []
+
+        messages.append({
+            "role": "tool",
+            "content": _json.dumps(tool_result, ensure_ascii=False),
+        })
+
+    # Second request with tool results
+    result2 = _post_json(
+        f"{OLLAMA_URL}/api/chat",
+        {"model": OLLAMA_MODEL, "messages": messages, "stream": False},
+        timeout=60,
+    )
+    if result2:
+        return result2.get("message", {}).get("content", "").strip()
+    return "Не удалось получить ответ от AI-ассистента."
