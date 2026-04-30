@@ -41,7 +41,7 @@ def ai_chat(
     current_user: User = Depends(get_current_user),
 ):
     history = [{"role": m.role, "content": m.content} for m in (body.history or [])]
-    reply = ai_service.chat(body.message, history)
+    reply = ai_service.chat_with_tools(body.message, history, db, current_user.id)
     return {"reply": reply}
 
 
