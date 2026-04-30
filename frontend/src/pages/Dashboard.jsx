@@ -6,6 +6,7 @@ import AppsGrid from '../components/dashboard/AppsGrid';
 import Suggestions from '../components/dashboard/Suggestions';
 
 const TYPE_TAG = { event: 'Событие', ride: 'Попутка', post: 'Статья', match: 'Мэтч' };
+const TYPE_NAV = { event: 'events', ride: 'rides', post: 'posts', match: 'matches' };
 
 const Dashboard = ({ onUnauthorized, onNavigate, onOpenUserProfile, onSayHi }) => {
   const [profile, setProfile] = useState(null);
@@ -26,19 +27,14 @@ const Dashboard = ({ onUnauthorized, onNavigate, onOpenUserProfile, onSayHi }) =
       .then((r) => setSuggestions(Array.isArray(r.data) ? r.data : []))
       .catch(handleErr);
 
-    // Real feed — try AI-ranked, fallback to plain
-    api.get('/feed/', { params: { limit: 20, ai_rank: true } })
+    api.get('/feed/', { params: { limit: 20 } })
       .then((r) => setFeedItems(Array.isArray(r.data) ? r.data : []))
-      .catch(() =>
-        api.get('/feed/', { params: { limit: 20 } })
-          .then((r) => setFeedItems(Array.isArray(r.data) ? r.data : []))
-          .catch(handleErr)
-      );
+      .catch(handleErr);
   }, [onUnauthorized]);
 
   const liveFeedItems = useMemo(() => {
     if (feedItems.length) {
-      return feedItems.slice(0, 12).map((it) => ({
+      return feedItems.slice(0, 6).map((it) => ({
         id: it.id,
         tone: it.tone || 'sage',
         who: it.who || '',
@@ -46,6 +42,7 @@ const Dashboard = ({ onUnauthorized, onNavigate, onOpenUserProfile, onSayHi }) =
         tag: TYPE_TAG[it.type] || it.type,
         time: it.time ? new Date(it.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '',
         mutual: it.ai_reason || undefined,
+        navTarget: TYPE_NAV[it.type] || null,
       }));
     }
     // Fallback if feed is empty
@@ -74,7 +71,11 @@ const Dashboard = ({ onUnauthorized, onNavigate, onOpenUserProfile, onSayHi }) =
           onPrimary={() => onNavigate?.('matches')}
           onAgent={() => onNavigate?.('chat')}
         />
-        <LiveFeed items={liveFeedItems} onOpen={() => onNavigate?.('posts')} />
+        <LiveFeed
+          items={liveFeedItems}
+          onOpen={() => onNavigate?.('posts')}
+          onItemClick={(it) => it.navTarget && onNavigate?.(it.navTarget)}
+        />
       </div>
 
       <AppsGrid onNavigate={onNavigate} badges={{ inbox: mutual.length || undefined }} />

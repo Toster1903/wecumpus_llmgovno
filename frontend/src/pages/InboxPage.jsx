@@ -24,6 +24,7 @@ const InboxPage = ({
   const [tab, setTab] = useState('personal');
   const [myProfile, setMyProfile] = useState(null);
   const [mutualMatches, setMutualMatches] = useState([]);
+  const [extraChatUsers, setExtraChatUsers] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
@@ -96,12 +97,15 @@ const InboxPage = ({
   // Handle initialChatUserId
   useEffect(() => {
     if (!initialChatUserId || isLoading) return;
-    const canOpen = mutualMatches.some((m) => m.user_id === initialChatUserId);
-    if (canOpen) {
-      setActiveChat({ type: 'user', id: initialChatUserId });
-      setTab('personal');
-    } else {
-      setError('Чат доступен только после взаимного мэтча.');
+    setActiveChat({ type: 'user', id: initialChatUserId });
+    setTab('personal');
+    if (!mutualMatches.some((m) => m.user_id === initialChatUserId)) {
+      api.get(`/profiles/user/${initialChatUserId}`).then((res) => {
+        setExtraChatUsers((prev) => {
+          if (prev.some((u) => u.user_id === initialChatUserId)) return prev;
+          return [...prev, { user_id: res.data.user_id, name: res.data.full_name, avatar_url: res.data.avatar_url }];
+        });
+      }).catch(() => {});
     }
     onInitialChatHandled?.();
   }, [initialChatUserId, isLoading, mutualMatches, onInitialChatHandled]);
@@ -226,9 +230,14 @@ const InboxPage = ({
     }
   };
 
+  const allPersonalChats = useMemo(() => {
+    const matchIds = new Set(mutualMatches.map((m) => m.user_id));
+    return [...mutualMatches, ...extraChatUsers.filter((u) => !matchIds.has(u.user_id))];
+  }, [mutualMatches, extraChatUsers]);
+
   const selectedPersonal = useMemo(
-    () => mutualMatches.find((m) => m.user_id === activeChat?.id) || null,
-    [mutualMatches, activeChat]
+    () => allPersonalChats.find((m) => m.user_id === activeChat?.id) || null,
+    [allPersonalChats, activeChat]
   );
   const selectedClub = useMemo(
     () => clubs.find((c) => c.id === activeChat?.id) || null,
@@ -282,10 +291,10 @@ const InboxPage = ({
           {/* Personal chats list */}
           {tab === 'personal' && (
             <div className="space-y-1.5">
-              {!mutualMatches.length && (
-                <p className="text-xs text-slate-500 px-1">Личные чаты появятся после взаимных мэтчей.</p>
+              {!allPersonalChats.length && (
+                <p className="text-xs text-slate-500 px-1">Здесь появятся ваши личные переписки.</p>
               )}
-              {mutualMatches.map((m) => (
+              {allPersonalChats.map((m) => (
                 <div
                   key={m.user_id}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 border transition ${

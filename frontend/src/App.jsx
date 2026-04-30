@@ -6,7 +6,6 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import Dashboard from './pages/Dashboard';
 import Events from './pages/Events';
 import Rides from './pages/Rides';
-import Plan from './pages/Plan';
 import Marketplace from './pages/Marketplace';
 import MatchesPage from './pages/MatchesPage';
 import InboxPage from './pages/InboxPage';
@@ -33,7 +32,7 @@ const APP_TO_PAGE = {
   profile: 'profile',
   events:  'events',
   rides:   'rides',
-  plan:    'plan',
+  plan:    'calendar',
   market:  'market',
   posts:   'posts',
 };
@@ -193,7 +192,6 @@ function App() {
         {currentPage === 'posts'  && <Posts onUnauthorized={handleLogout} />}
         {currentPage === 'events' && <Events onUnauthorized={handleLogout} />}
         {currentPage === 'rides'  && <Rides onUnauthorized={handleLogout} />}
-        {currentPage === 'plan'   && <Plan onUnauthorized={handleLogout} />}
         {currentPage === 'market'    && <Marketplace onUnauthorized={handleLogout} />}
         {currentPage === 'calendar'  && <Calendar onUnauthorized={handleLogout} />}
       </div>

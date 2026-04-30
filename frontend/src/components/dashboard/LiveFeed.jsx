@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 const TONES = ['sage', 'rose', 'sky', 'butter', 'terracotta'];
 
-const LiveFeed = ({ items = [], onOpen }) => {
+const LiveFeed = ({ items = [], onOpen, onItemClick }) => {
   // Reset reveal counter when the items reference changes – do it during render
   // (instead of inside an effect) per react-hooks/set-state-in-effect.
   const itemsKey = useMemo(() => items.map((it, i) => it.id || i).join('|'), [items]);
@@ -26,7 +26,7 @@ const LiveFeed = ({ items = [], onOpen }) => {
         }
         return i + 1;
       });
-    }, 120);
+    }, 40);
     return () => clearInterval(timer);
   }, [items]);
 
@@ -54,10 +54,16 @@ const LiveFeed = ({ items = [], onOpen }) => {
         )}
         {items.map((it, i) => {
           const tone = it.tone || TONES[i % TONES.length];
+          const clickable = Boolean(it.navTarget);
           return (
             <div
               key={it.id || `${it.who}-${i}`}
-              className={`feed-row ${i < inIdx ? 'is-in' : ''} ${i === hot ? 'is-hot' : ''}`}
+              className={`feed-row ${i < inIdx ? 'is-in' : ''} ${i === hot ? 'is-hot' : ''} ${clickable ? 'feed-row-link' : ''}`}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={clickable ? () => onItemClick?.(it) : undefined}
+              onKeyDown={clickable ? (e) => e.key === 'Enter' && onItemClick?.(it) : undefined}
+              style={clickable ? { cursor: 'pointer' } : undefined}
             >
               <span className={`feed-dot ${tone}`} />
               <div className="feed-body">

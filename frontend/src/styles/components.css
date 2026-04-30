@@ -39,6 +39,8 @@
 }
 .feed-row.is-in { opacity: 1; transform: translateX(0); }
 .feed-row.is-hot { background: var(--cream-deep); }
+.feed-row.feed-row-link:hover { background: var(--cream-deep); opacity: 1; }
+.feed-row.feed-row-link:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
 .feed-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 0.45rem; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(0,0,0,0.04); }
 .feed-dot.sage { background: var(--sage); }
 .feed-dot.rose { background: var(--rose); }
