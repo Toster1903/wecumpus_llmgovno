@@ -16,6 +16,8 @@ import urllib.request
 import urllib.error
 import json
 
+from app.services.ai_tools import TOOL_SCHEMAS, TOOL_EXECUTORS
+
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
@@ -152,11 +154,7 @@ def chat_with_tools(
     """
     Chat with Ollama using native tool use.
     Makes up to 2 requests: first with tools, second with tool results if needed.
-    Falls back to plain chat() if tool use is unavailable.
     """
-    from app.services.ai_tools import TOOL_SCHEMAS, TOOL_EXECUTORS
-    import json as _json
-
     messages = [{"role": "system", "content": CAMPUS_SYSTEM_PROMPT}]
     for item in (history or []):
         role = item.get("role", "user")
@@ -182,7 +180,8 @@ def chat_with_tools(
     tool_calls = response_message.get("tool_calls") or []
 
     if not tool_calls:
-        return response_message.get("content", "").strip()
+        content = response_message.get("content", "").strip()
+        return content or "Не удалось получить ответ от AI-ассистента."
 
     # Execute each tool call
     messages.append(response_message)
@@ -191,8 +190,8 @@ def chat_with_tools(
         raw_args = call.get("function", {}).get("arguments", {})
         if isinstance(raw_args, str):
             try:
-                raw_args = _json.loads(raw_args)
-            except _json.JSONDecodeError:
+                raw_args = json.loads(raw_args)
+            except json.JSONDecodeError:
                 raw_args = {}
 
         executor = TOOL_EXECUTORS.get(fn_name)
@@ -200,14 +199,15 @@ def chat_with_tools(
             try:
                 tool_result = executor(db=db, user_id=user_id, **raw_args)
             except Exception as exc:
-                logger.warning("Tool %s failed: %s", fn_name, exc)
+                logger.warning("Tool %s failed: %s", fn_name, exc, exc_info=True)
                 tool_result = []
         else:
             tool_result = []
 
         messages.append({
             "role": "tool",
-            "content": _json.dumps(tool_result, ensure_ascii=False),
+            "name": fn_name,
+            "content": json.dumps(tool_result, ensure_ascii=False),
         })
 
     # Second request with tool results
@@ -217,5 +217,6 @@ def chat_with_tools(
         timeout=60,
     )
     if result2:
-        return result2.get("message", {}).get("content", "").strip()
+        content = result2.get("message", {}).get("content", "").strip()
+        return content or "Не удалось получить ответ от AI-ассистента."
     return "Не удалось получить ответ от AI-ассистента."

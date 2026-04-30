@@ -44,13 +44,8 @@ TOOL_SCHEMAS = [
             "description": "Найти мероприятия подходящие текущему пользователю на основе его интересов.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "user_id": {
-                        "type": "integer",
-                        "description": "ID текущего пользователя",
-                    }
-                },
-                "required": ["user_id"],
+                "properties": {},
+                "required": [],
             },
         },
     },
