@@ -1,9 +1,487 @@
+# AI Tool Use + Seed Data Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Добавить нативный tool use (function calling) через Ollama API для 7 DB-инструментов и загрузить реалистичные мок-данные для демонстрации всех аспектов приложения.
+
+**Architecture:** `ai_tools.py` содержит схемы инструментов в формате Ollama и функции-исполнители, обращающиеся к БД напрямую через SQLAlchemy. `ai_service.chat_with_tools()` делает два запроса к Ollama: первый с `tools`, второй с результатами вызовов. Endpoint `/api/v1/ai/chat` передаёт `db` и `user_id` в новый метод.
+
+**Tech Stack:** Python 3.12, FastAPI, SQLAlchemy, PostgreSQL (psycopg2), Ollama REST API (qwen2.5:3b), pgvector
+
+---
+
+## File Map
+
+| Action | File | Responsibility |
+|--------|------|----------------|
+| Create | `backend/app/services/ai_tools.py` | Tool schemas (Ollama format) + 7 executor functions |
+| Modify | `backend/app/services/ai_service.py` | Add `chat_with_tools()` |
+| Modify | `backend/app/api/v1/endpoints/ai.py` | Pass `db` + `user_id` to chat |
+| Create | `backend/app/seed_data.py` | Idempotent mock data script |
+
+---
+
+## Task 1: ai_tools.py — Tool Schemas
+
+**Files:**
+- Create: `backend/app/services/ai_tools.py`
+
+- [ ] **Step 1: Create the file with tool schema definitions**
+
+```python
+# backend/app/services/ai_tools.py
+"""
+Tool definitions for Ollama function calling + DB executor functions.
+Each executor receives (db: Session, **kwargs) and returns list[dict].
+"""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
+
+from app.models.profile import Profile
+from app.models.event import Event
+from app.models.club import Club
+from app.models.market_item import MarketItem
+from app.models.ride import Ride
+from app.models.user import User
+
+# ── Ollama tool schemas ────────────────────────────────────────────────────────
+
+TOOL_SCHEMAS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "find_users_by_interests",
+            "description": "Найти студентов/пользователей по интересам. Возвращает список людей.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "interests": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Список интересов, например ['python', 'музыка']",
+                    }
+                },
+                "required": ["interests"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_events_for_user",
+            "description": "Найти мероприятия подходящие текущему пользователю на основе его интересов.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "description": "ID текущего пользователя",
+                    }
+                },
+                "required": ["user_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_users_for_event",
+            "description": "Найти пользователей которым может быть интересно конкретное мероприятие.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "integer",
+                        "description": "ID мероприятия",
+                    }
+                },
+                "required": ["event_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_marketplace",
+            "description": "Поиск товаров на маркетплейсе кампуса.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Поисковый запрос, например 'гитара' или 'учебник'",
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Категория товара (необязательно): electronics, books, clothing, sports, music, other",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_clubs_by_tags",
+            "description": "Найти клубы по тегам/интересам.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Теги для поиска клубов, например ['программирование', 'спорт']",
+                    }
+                },
+                "required": ["tags"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_upcoming_events",
+            "description": "Получить ближайшие предстоящие мероприятия кампуса.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Максимальное количество событий (по умолчанию 5)",
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_ride_companions",
+            "description": "Найти попутчиков по маршруту.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origin": {
+                        "type": "string",
+                        "description": "Откуда, например 'Сириус' или 'Адлер'",
+                    },
+                    "destination": {
+                        "type": "string",
+                        "description": "Куда, например 'Сочи' или 'Краснодар'",
+                    },
+                },
+                "required": ["origin", "destination"],
+            },
+        },
+    },
+]
+
+# ── Executor functions ─────────────────────────────────────────────────────────
+
+def find_users_by_interests(db: Session, interests: list[str], **_) -> list[dict]:
+    profiles = (
+        db.query(Profile)
+        .filter(Profile.interests.overlap(interests))
+        .limit(5)
+        .all()
+    )
+    return [
+        {
+            "name": p.full_name,
+            "age": p.age,
+            "interests": p.interests,
+            "bio": p.bio,
+        }
+        for p in profiles
+    ]
+
+
+def find_events_for_user(db: Session, user_id: int, **_) -> list[dict]:
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if not profile or not profile.interests:
+        return get_upcoming_events(db)
+    now = datetime.now(timezone.utc)
+    events = (
+        db.query(Event)
+        .filter(Event.start_time > now)
+        .filter(Event.tags.overlap(profile.interests))
+        .order_by(Event.start_time)
+        .limit(5)
+        .all()
+    )
+    return [_event_dict(e) for e in events]
+
+
+def find_users_for_event(db: Session, event_id: int, **_) -> list[dict]:
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event or not event.tags:
+        return []
+    profiles = (
+        db.query(Profile)
+        .filter(Profile.interests.overlap(event.tags))
+        .limit(5)
+        .all()
+    )
+    return [
+        {"name": p.full_name, "interests": p.interests, "bio": p.bio}
+        for p in profiles
+    ]
+
+
+def search_marketplace(db: Session, query: str, category: str | None = None, **_) -> list[dict]:
+    q = db.query(MarketItem).filter(MarketItem.is_available == True)
+    q = q.filter(
+        or_(
+            MarketItem.title.ilike(f"%{query}%"),
+            MarketItem.description.ilike(f"%{query}%"),
+        )
+    )
+    if category:
+        q = q.filter(MarketItem.category == category)
+    items = q.limit(5).all()
+    return [
+        {
+            "id": i.id,
+            "title": i.title,
+            "price": float(i.price),
+            "category": i.category,
+            "condition": i.condition,
+            "description": i.description,
+        }
+        for i in items
+    ]
+
+
+def find_clubs_by_tags(db: Session, tags: list[str], **_) -> list[dict]:
+    clubs = (
+        db.query(Club)
+        .filter(Club.tags.overlap(tags))
+        .limit(5)
+        .all()
+    )
+    return [
+        {"id": c.id, "name": c.name, "description": c.description, "tags": c.tags}
+        for c in clubs
+    ]
+
+
+def get_upcoming_events(db: Session, limit: int = 5, **_) -> list[dict]:
+    now = datetime.now(timezone.utc)
+    events = (
+        db.query(Event)
+        .filter(Event.start_time > now)
+        .order_by(Event.start_time)
+        .limit(limit)
+        .all()
+    )
+    return [_event_dict(e) for e in events]
+
+
+def find_ride_companions(db: Session, origin: str, destination: str, **_) -> list[dict]:
+    now = datetime.now(timezone.utc)
+    rides = (
+        db.query(Ride)
+        .filter(Ride.departure_time > now)
+        .filter(Ride.from_location.ilike(f"%{origin}%"))
+        .filter(Ride.to_location.ilike(f"%{destination}%"))
+        .limit(5)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "from": r.from_location,
+            "to": r.to_location,
+            "departure": r.departure_time.isoformat(),
+            "seats": r.seats_total,
+            "comment": r.comment,
+        }
+        for r in rides
+    ]
+
+
+# ── Helper ─────────────────────────────────────────────────────────────────────
+
+def _event_dict(e: Event) -> dict:
+    return {
+        "id": e.id,
+        "title": e.title,
+        "description": e.description,
+        "location": e.location,
+        "start_time": e.start_time.isoformat(),
+        "tags": e.tags,
+    }
+
+
+# ── Dispatch ──────────────────────────────────────────────────────────────────
+
+TOOL_EXECUTORS: dict[str, callable] = {
+    "find_users_by_interests": find_users_by_interests,
+    "find_events_for_user": find_events_for_user,
+    "find_users_for_event": find_users_for_event,
+    "search_marketplace": search_marketplace,
+    "find_clubs_by_tags": find_clubs_by_tags,
+    "get_upcoming_events": get_upcoming_events,
+    "find_ride_companions": find_ride_companions,
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+cd backend
+git add app/services/ai_tools.py
+git commit -m "feat: add AI tool definitions and DB executors"
+```
+
+---
+
+## Task 2: ai_service.py — chat_with_tools()
+
+**Files:**
+- Modify: `backend/app/services/ai_service.py`
+
+- [ ] **Step 1: Add `chat_with_tools` function**
+
+Add the following function at the end of `backend/app/services/ai_service.py` (after the existing `suggest_feed_items` function):
+
+```python
+def chat_with_tools(
+    message: str,
+    history: list[dict] | None,
+    db,  # SQLAlchemy Session
+    user_id: int,
+) -> str:
+    """
+    Chat with Ollama using native tool use.
+    Makes up to 2 requests: first with tools, second with tool results if needed.
+    Falls back to plain chat() if tool use is unavailable.
+    """
+    from app.services.ai_tools import TOOL_SCHEMAS, TOOL_EXECUTORS
+    import json as _json
+
+    messages = [{"role": "system", "content": CAMPUS_SYSTEM_PROMPT}]
+    for item in (history or []):
+        role = item.get("role", "user")
+        content = item.get("content", "")
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
+
+    result = _post_json(
+        f"{OLLAMA_URL}/api/chat",
+        {
+            "model": OLLAMA_MODEL,
+            "messages": messages,
+            "tools": TOOL_SCHEMAS,
+            "stream": False,
+        },
+        timeout=60,
+    )
+    if not result:
+        return "AI-ассистент временно недоступен. Убедитесь, что Ollama запущена (`ollama serve`)."
+
+    response_message = result.get("message", {})
+    tool_calls = response_message.get("tool_calls") or []
+
+    if not tool_calls:
+        return response_message.get("content", "").strip()
+
+    # Execute each tool call
+    messages.append(response_message)
+    for call in tool_calls:
+        fn_name = call.get("function", {}).get("name", "")
+        raw_args = call.get("function", {}).get("arguments", {})
+        if isinstance(raw_args, str):
+            try:
+                raw_args = _json.loads(raw_args)
+            except _json.JSONDecodeError:
+                raw_args = {}
+
+        executor = TOOL_EXECUTORS.get(fn_name)
+        if executor:
+            try:
+                tool_result = executor(db=db, user_id=user_id, **raw_args)
+            except Exception as exc:
+                logger.warning("Tool %s failed: %s", fn_name, exc)
+                tool_result = []
+        else:
+            tool_result = []
+
+        messages.append({
+            "role": "tool",
+            "content": _json.dumps(tool_result, ensure_ascii=False),
+        })
+
+    # Second request with tool results
+    result2 = _post_json(
+        f"{OLLAMA_URL}/api/chat",
+        {"model": OLLAMA_MODEL, "messages": messages, "stream": False},
+        timeout=60,
+    )
+    if result2:
+        return result2.get("message", {}).get("content", "").strip()
+    return "Не удалось получить ответ от AI-ассистента."
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add app/services/ai_service.py
+git commit -m "feat: add chat_with_tools to ai_service"
+```
+
+---
+
+## Task 3: Update /ai/chat endpoint
+
+**Files:**
+- Modify: `backend/app/api/v1/endpoints/ai.py`
+
+- [ ] **Step 1: Update the `ai_chat` handler to use `chat_with_tools`**
+
+Replace the existing `ai_chat` function (lines 37-45) with:
+
+```python
+@router.post("/chat", response_model=ChatResponse)
+def ai_chat(
+    body: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    history = [{"role": m.role, "content": m.content} for m in (body.history or [])]
+    reply = ai_service.chat_with_tools(body.message, history, db, current_user.id)
+    return {"reply": reply}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add app/api/v1/endpoints/ai.py
+git commit -m "feat: wire chat_with_tools into /ai/chat endpoint"
+```
+
+---
+
+## Task 4: Seed Data Script
+
+**Files:**
+- Create: `backend/app/seed_data.py`
+
+- [ ] **Step 1: Create the seed script**
+
+```python
 # backend/app/seed_data.py
 """
 Mock data seed script for Wecampus demo.
 Run: cd backend && python -m app.seed_data
 
-Idempotent: skips seeding if users count > 5.
+Idempotent: skips seeding if users already exist.
 """
 from __future__ import annotations
 
@@ -13,7 +491,6 @@ from decimal import Decimal
 from app.core.security import get_password_hash
 from app.db.session import SessionLocal
 from app.models.club import Club
-from app.models.club_invite import ClubInvite  # noqa: F401 — registers model with SQLAlchemy mapper
 from app.models.club_member import ClubMember
 from app.models.event import Event
 from app.models.market_item import MarketItem
@@ -125,7 +602,7 @@ MARKET_ITEMS_DATA = [
     {"title": "Коврик для йоги", "description": "6мм, нескользящий, цвет голубой. Брала на месяц, продаю.", "price": "1200.00", "category": "sports", "condition": "good"},
     {"title": "Raspberry Pi 4 (4GB)", "description": "Плата + корпус + блок питания. Использовался для проекта, теперь не нужен.", "price": "5500.00", "category": "electronics", "condition": "good"},
     {"title": "Кроссовки Nike Air Max 42р", "description": "Почти новые, надевал 3 раза. Не подошёл размер.", "price": "3200.00", "category": "clothing", "condition": "excellent"},
-    {"title": "Учебник по органической химии", "description": "Morrison & Boyd. Английский язык, 6-е издание.", "price": "800.00", "category": "books", "condition": "good"},
+    {"title": "Учебник по органической химии", "description": "莫 Morrison & Boyd. Английский язык, 6-е издание.", "price": "800.00", "category": "books", "condition": "good"},
     {"title": "Штанга разборная 50кг", "description": "Олимпийский гриф + блины. Отдаю недорого, переезжаю.", "price": "7000.00", "category": "sports", "condition": "good"},
 ]
 
@@ -261,3 +738,91 @@ if __name__ == "__main__":
         seed(db)
     finally:
         db.close()
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add app/seed_data.py
+git commit -m "feat: add seed data script with 20 users, 15 events, clubs, marketplace, rides, posts"
+```
+
+---
+
+## Task 5: Run Seed + Smoke Test
+
+**Files:** none
+
+- [ ] **Step 1: Run the seed script**
+
+```bash
+cd /Users/dmitriy/python/wecumpus_llmgovno/backend
+python -m app.seed_data
+```
+
+Expected output:
+```
+Seeding users and profiles...
+Seeding events...
+Seeding clubs...
+Seeding marketplace...
+Seeding rides...
+Seeding posts...
+Done! Seeded 20 users, 15 events, 5 clubs, 10 market items, 8 rides, 10 posts.
+```
+
+- [ ] **Step 2: Verify rows in DB**
+
+```bash
+python -c "
+from app.db.session import SessionLocal
+from app.models.user import User
+from app.models.event import Event
+from app.models.club import Club
+from app.models.market_item import MarketItem
+from app.models.ride import Ride
+from app.models.post import Post
+db = SessionLocal()
+print('Users:', db.query(User).count())
+print('Events:', db.query(Event).count())
+print('Clubs:', db.query(Club).count())
+print('MarketItems:', db.query(MarketItem).count())
+print('Rides:', db.query(Ride).count())
+print('Posts:', db.query(Post).count())
+db.close()
+"
+```
+
+Expected: all counts ≥ the seeded amounts.
+
+- [ ] **Step 3: Smoke test chat_with_tools via API**
+
+Start the server:
+```bash
+uvicorn app.main:app --reload
+```
+
+In a second terminal, get a token (use any seeded user):
+```bash
+curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alexey.petrov@sirius.ru","password":"password123"}' | python -m json.tool
+```
+
+Then test tool use:
+```bash
+TOKEN="<token from above>"
+curl -s -X POST http://localhost:8000/api/v1/ai/chat \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Какие ближайшие события мне подойдут?","history":[]}' | python -m json.tool
+```
+
+Expected: JSON `{"reply": "..."}` where the reply mentions specific events from the DB.
+
+- [ ] **Step 4: Final commit**
+
+```bash
+git add -A
+git commit -m "feat: AI tool use with DB integration + seed data complete"
+```
