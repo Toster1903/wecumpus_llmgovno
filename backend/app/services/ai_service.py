@@ -183,8 +183,9 @@ def chat_with_tools(
         content = response_message.get("content", "").strip()
         return content or "Не удалось получить ответ от AI-ассистента."
 
-    # Execute each tool call
+    # Execute each tool call, collect results for fallback formatting
     messages.append(response_message)
+    all_tool_results: list[tuple[str, list]] = []
     for call in tool_calls:
         fn_name = call.get("function", {}).get("name", "")
         raw_args = call.get("function", {}).get("arguments", {})
@@ -204,6 +205,7 @@ def chat_with_tools(
         else:
             tool_result = []
 
+        all_tool_results.append((fn_name, tool_result))
         messages.append({
             "role": "tool",
             "name": fn_name,
@@ -218,5 +220,47 @@ def chat_with_tools(
     )
     if result2:
         content = result2.get("message", {}).get("content", "").strip()
-        return content or "Не удалось получить ответ от AI-ассистента."
-    return "Не удалось получить ответ от AI-ассистента."
+        if content:
+            return content
+
+    # Fallback: model returned empty content — format tool results directly
+    return _format_tool_results(all_tool_results)
+
+
+_TOOL_LABELS = {
+    "find_users_by_interests": "Люди по интересам",
+    "find_events_for_user": "Подходящие мероприятия",
+    "find_users_for_event": "Люди, которым интересно мероприятие",
+    "search_marketplace": "Товары на маркетплейсе",
+    "find_clubs_by_tags": "Клубы",
+    "get_upcoming_events": "Ближайшие мероприятия",
+    "find_ride_companions": "Попутчики",
+}
+
+
+def _format_tool_results(results: list[tuple[str, list]]) -> str:
+    if not results or all(not items for _, items in results):
+        return "По вашему запросу ничего не найдено."
+
+    parts = []
+    for fn_name, items in results:
+        if not items:
+            continue
+        label = _TOOL_LABELS.get(fn_name, fn_name)
+        parts.append(f"**{label}:**")
+        for item in items[:5]:
+            if fn_name in ("find_events_for_user", "get_upcoming_events"):
+                line = f"• {item.get('title', '?')} — {item.get('location', '')} ({item.get('start_time', '')[:10]})"
+            elif fn_name in ("find_users_by_interests", "find_users_for_event"):
+                interests = ", ".join(item.get("interests") or [])
+                line = f"• {item.get('name', '?')} — {interests}"
+            elif fn_name == "search_marketplace":
+                line = f"• {item.get('title', '?')} — {item.get('price', '?')} ₽ ({item.get('condition', '')})"
+            elif fn_name == "find_clubs_by_tags":
+                line = f"• {item.get('name', '?')} — {item.get('description', '')[:60]}"
+            elif fn_name == "find_ride_companions":
+                line = f"• {item.get('from', '?')} → {item.get('to', '?')}, {item.get('departure', '')[:16]}, мест: {item.get('seats', '?')}"
+            else:
+                line = f"• {json.dumps(item, ensure_ascii=False)}"
+            parts.append(line)
+    return "\n".join(parts) if parts else "По вашему запросу ничего не найдено."
